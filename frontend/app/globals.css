@@ -1,8 +1,7 @@
-/* ─── Bharat Bazaar Global Styles ─────────────────────────────────────────── */
 @import "tailwindcss";
-
-/* Google Fonts - Outfit */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+/* ─── Bharat Bazaar Global Styles ─────────────────────────────────────────── */
 
 :root {
   --font-primary: 'Outfit', sans-serif;
