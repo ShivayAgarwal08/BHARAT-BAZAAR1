@@ -287,7 +287,7 @@ export default function Signup() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontWeight: 800, fontSize: 20, margin: '0 auto 24px', backdropFilter: 'blur(10px)',
                 border: '1px solid rgba(255,255,255,0.3)'
-              }}>RB</div>
+              }}>BB</div>
 
               {roleMode === 'artisan' ? (
                 <div style={{ opacity: 1, transition: 'opacity 0.6s ease' }}>

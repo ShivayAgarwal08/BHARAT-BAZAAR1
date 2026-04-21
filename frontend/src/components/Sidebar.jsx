@@ -24,7 +24,7 @@ export default function Sidebar() {
 
   return (
     <nav className="sidebar">
-      <div className="sidebar-logo">RB</div>
+      <div className="sidebar-logo">BB</div>
 
       {items.map((item) => (
         <NavLink

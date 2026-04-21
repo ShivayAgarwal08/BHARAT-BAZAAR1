@@ -39,9 +39,9 @@ export default function Login() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'white', fontWeight: 800, fontSize: 20, margin: '0 auto 12px',
             boxShadow: '0 6px 20px rgba(108,63,207,0.35)',
-          }}>RB</div>
+          }}>BB</div>
           <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.5px' }}>Welcome back</h1>
-          <p style={{ color: '#5a4f7a', fontSize: 14, marginTop: 4 }}>Sign in to your RuralBazaar account</p>
+          <p style={{ color: '#5a4f7a', fontSize: 14, marginTop: 4 }}>Sign in to your Bharat Bazaar account</p>
         </div>
 
         <div className="card" style={{ padding: 32 }}>

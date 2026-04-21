@@ -53,7 +53,7 @@ export default function ImpactDashboard() {
     <div className="animate-in">
       <div className="page-header">
         <h1 className="page-title">Impact Dashboard</h1>
-        <p className="page-subtitle">Visualizing the social and economic change driven by RuralBazaar.</p>
+        <p className="page-subtitle">Visualizing the social and economic change driven by Bharat Bazaar.</p>
       </div>
 
       <div className="stats-grid">
@@ -140,7 +140,7 @@ export default function ImpactDashboard() {
             <div>
                <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Global Reach</h3>
                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6 }}>
-                  RuralBazaar has touched 142 villages across 12 states. We are on a mission to bring ₹100 Crores of rural revenue into the digital economy by 2026.
+                  Bharat Bazaar has touched 142 villages across 12 states. We are on a mission to bring ₹100 Crores of rural revenue into the digital economy by 2026.
                 </p>
             </div>
          </div>

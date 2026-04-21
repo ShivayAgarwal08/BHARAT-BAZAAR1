@@ -71,7 +71,7 @@ export default function Landing() {
             </span>
           </h1>
           <p style={{ fontSize: 18, color: '#5a4f7a', lineHeight: 1.6, marginBottom: 32, maxWidth: 520 }}>
-            RuralBazaar empowers rural artisans to list, price, and sell their handmade products using just their voice — in any regional language.
+            Bharat Bazaar empowers rural artisans to list, price, and sell their handmade products using just their voice — in any regional language.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link to="/signup" className="btn btn-primary btn-lg">
@@ -150,7 +150,7 @@ export default function Landing() {
       </section>
 
       <footer style={{ textAlign: 'center', padding: '20px', color: '#9488b8', fontSize: 13, borderTop: '1px solid rgba(200,190,240,0.3)' }}>
-        © 2024 RuralBazaar — Empowering Rural India 🇮🇳
+        © 2024 Bharat Bazaar — Empowering Rural India 🇮🇳
       </footer>
     </div>
   )
