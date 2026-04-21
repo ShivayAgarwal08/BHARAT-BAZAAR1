@@ -54,12 +54,14 @@ def list_products(
 
 @router.get("/all", response_model=list[schemas.ProductOut])
 def list_all_products(db: Session = Depends(get_db)):
-    return db.query(models.Product).order_by(models.Product.created_at.desc()).limit(50).all()
+    from sqlalchemy.orm import joinedload
+    return db.query(models.Product).options(joinedload(models.Product.owner)).order_by(models.Product.created_at.desc()).limit(50).all()
 
 
 @router.get("/{product_id}", response_model=schemas.ProductOut)
 def get_product(product_id: int, db: Session = Depends(get_db)):
-    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    from sqlalchemy.orm import joinedload
+    product = db.query(models.Product).options(joinedload(models.Product.owner)).filter(models.Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product

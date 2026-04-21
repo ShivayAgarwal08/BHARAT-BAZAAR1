@@ -81,7 +81,7 @@ export default function ListingPage() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 className="page-title">{product.title}</h1>
-          <p className="page-subtitle">Created on {new Date(product.created_at).toLocaleDateString()}</p>
+          <p className="page-subtitle">Created on {product.created_at ? new Date(product.created_at).toLocaleDateString() : 'N/A'}</p>
         </div>
         {user.role === 'artisan' && (
           <div style={{ display: 'flex', gap: 10 }}>
@@ -119,7 +119,7 @@ export default function ListingPage() {
               </p>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32 }}>
-                {product.tags.split(',').map(tag => (
+                {(product.tags || '').split(',').filter(t => t.trim()).map(tag => (
                   <span key={tag} className="tag">{tag}</span>
                 ))}
               </div>

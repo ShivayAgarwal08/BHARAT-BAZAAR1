@@ -41,7 +41,7 @@ export default function Dashboard() {
     fetchData()
   }, [isIntern])
 
-  const totalValue = products.reduce((acc, p) => acc + (p.price * p.quantity), 0)
+  const totalValue = products.reduce((acc, p) => acc + ((p.price || 0) * (p.quantity || 0)), 0)
   const acceptedTeam = invitations.filter(inv => inv.status === 'accepted')
 
   const handleUpdateStatus = async (id, newStatus) => {
@@ -112,7 +112,7 @@ export default function Dashboard() {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>{inv.intern.name} <span style={{ fontSize: 13, color: '#6c3fcf', fontWeight: 600 }}>({inv.intern.services})</span></div>
                   <div style={{ fontSize: 13, color: '#5a4f7a', margin: '4px 0' }}>Request: "{inv.message}"</div>
-                  <div style={{ fontSize: 12, color: '#9488b8' }}>Sent on {new Date(inv.created_at).toLocaleDateString()}</div>
+                  <div style={{ fontSize: 12, color: '#9488b8' }}>Sent on {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : 'N/A'}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   {inv.status === 'accepted' ? (

@@ -139,7 +139,9 @@ async def simulate_analysis(description: str, language: str = "hi") -> Dict[str,
         "profit_margin": int(suggested * 0.35),
         "quantity": 1,
         "tags": ["handmade", "rural-business", category, "local-craft"],
-        "greeting": GREETINGS.get(language, GREETINGS["en"])
+        "greeting": GREETINGS.get(language, GREETINGS["en"]),
+        "title": "Authentic Rural Craft",
+        "description": f"Handcrafted {category} item."
     }
 
 async def simulate_listing_gen(analysis: Dict[str, Any]) -> Dict[str, Any]:

@@ -247,7 +247,7 @@ export default function VoiceCreator() {
             <div>
               <label className="form-label">Tags</label>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {result.tags.map(tag => <span key={tag} className="tag">{tag}</span>)}
+                {(Array.isArray(result.tags) ? result.tags : []).map(tag => <span key={tag} className="tag">{tag}</span>)}
               </div>
             </div>
           </div>
