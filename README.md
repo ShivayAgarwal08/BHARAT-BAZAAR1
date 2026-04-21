@@ -1,102 +1,45 @@
-# 🪔 Bharat Bazaar — AI-Powered Platform for Rural Artisans
+# RuralBazaar - Empowering Rural Artisans
 
-A full-stack MVP web app that allows rural artisans to **speak** their product descriptions and instantly get AI-generated product listings using **Groq LLaMA 3**.
+RuralBazaar is a full-stack platform designed to help rural artisans list their products and reach a wider market with AI-powered insights.
 
----
+## Project Structure
 
-## 🚀 Tech Stack
+- `/backend`: FastAPI (Python) server
+- `/frontend`: React (Vite) client
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 14 (App Router) + Tailwind CSS |
-| Backend | FastAPI (Python) |
-| Database | SQLite (via SQLAlchemy) |
-| AI | Groq API — LLaMA 3 8B (free tier) |
-| Voice | Browser `webkitSpeechRecognition` |
+## Tech Stack
 
----
+- **Backend**: FastAPI, SQLAlchemy, SQLite (Development) / PostgreSQL (Production)
+- **Frontend**: React, Vite, Axios, Recharts
+- **AI**: Google Gemini Pro (Text & Vision)
 
-## 📁 Project Structure
+## Deployment
 
-```
-BHARAT-BAZAAR/
-├── backend/
-│   ├── main.py          # FastAPI app (4 endpoints)
-│   ├── requirements.txt
-│   ├── .env             # GROQ_API_KEY goes here
-│   └── products.db      # SQLite DB (auto-created)
-│
-└── frontend/
-    ├── app/
-    │   ├── layout.tsx   # Root layout + navbar
-    │   ├── page.tsx     # Home page (voice → generate)
-    │   └── products/
-    │       └── page.tsx # Products listing page
-    ├── components/
-    │   ├── VoiceRecorder.tsx
-    │   ├── ProductCard.tsx
-    │   └── ProductList.tsx
-    └── ...
-```
+### 1. Database (Supabase)
+1. Create a project on [Supabase](https://supabase.com/).
+2. Go to **Project Settings** > **Database**.
+3. Copy the **Connection String** (URI).
+   - Ensure you use the "Transaction" mode (port 6543) if you're using pooling, or just the standard connection string.
+   - Example: `postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-ID].supabase.co:5432/postgres`
 
----
+### 2. Backend (Render)
+1. Link your GitHub repo to [Render](https://render.com/).
+2. Create a new **Web Service**.
+3. Set **Build Command**: `pip install -r requirements.txt`
+4. Set **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+5. Add **Environment Variables**:
+   - `DATABASE_URL`: (Your Supabase connection string)
+   - `GEMINI_API_KEY`: (Your Google Gemini key)
+   - `JWT_SECRET`: (A random secret string)
 
-## ⚙️ Setup & Run
+### 3. Frontend (Vercel)
+1. Link your GitHub repo to [Vercel](https://vercel.com/).
+2. Create a new **Project**.
+3. Add **Environment Variables**:
+   - `VITE_API_URL`: (Your Render backend URL, e.g., `https://rural-bazaar.onrender.com`)
 
-### 1. Get Your Groq API Key (Free)
-1. Go to [https://console.groq.com](https://console.groq.com)
-2. Sign up and create an API key
-3. Copy it
-
-### 2. Start the Backend
-
-```bash
-cd backend
-
-# Create virtual environment (recommended)
-python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate  # Mac/Linux
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Add your Groq API key
-# Edit backend/.env and replace: your_groq_api_key_here
-
-# Start FastAPI server
-uvicorn main:app --reload
-```
-
-Backend runs at: http://127.0.0.1:8000
-
-### 3. Start the Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Frontend runs at: http://localhost:3000
-
----
-
-## 🌐 API Endpoints
-
-| Method | URL | Description |
-|--------|-----|-------------|
-| `GET` | `/` | Health check |
-| `POST` | `/generate` | Generate listing from voice text |
-| `POST` | `/products` | Save a product |
-| `GET` | `/products` | Get all saved products |
-
----
-
-## 🎯 How It Works
-
-1. **Speak** → Click mic button, describe product in natural language
-2. **Review** → See transcript, edit if needed
-3. **Generate** → Groq LLaMA 3 creates structured listing
-4. **Save** → Product stored in SQLite
-5. **Browse** → View all saved products on `/products`
+## Tech Stack
+- **Frontend**: React (Vite) on Vercel
+- **Backend**: FastAPI (Python) on Render
+- **Database**: PostgreSQL on Supabase
+- **AI**: Google Gemini Pro
