@@ -13,7 +13,7 @@ Base.metadata.create_all(bind=engine)
 os.makedirs("uploads", exist_ok=True)
 
 app = FastAPI(
-    title="RuralBazaar API",
+    title="Bharat Bazaar API",
     description="Empowering rural artisans through AI-powered product listing and market insights",
     version="1.0.0",
 )
@@ -44,13 +44,14 @@ app.include_router(impact_router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "RuralBazaar API", "version": "1.0.0"}
+    return {"status": "ok", "service": "Bharat Bazaar API", "version": "1.0.0"}
 
 
 @app.get("/")
 def root():
     return {
-        "message": "Welcome to RuralBazaar API",
+        "message": "Welcome to Bharat Bazaar API",
         "docs": "/docs",
         "version": "1.0.0"
     }
+
