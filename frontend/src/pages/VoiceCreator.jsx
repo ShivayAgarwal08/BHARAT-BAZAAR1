@@ -59,40 +59,16 @@ export default function VoiceCreator() {
     if (!description.trim()) return
     setAnalyzing(true)
     try {
-      // Use Puter.js AI directly from the browser
-      const prompt = `
-        Act as a product market expert for rural products in India.
-        Analyze the following product description: "${description}"
-        Language: ${user.language || 'hi'}
-
-        Respond in strictly valid JSON format with these exact fields:
-        - product_name: (Short specific name)
-        - category: (One of: handloom, pottery, jewelry, food, other)
-        - material: (Primary material)
-        - min_price: (Estimated minimum market price in INR)
-        - max_price: (Estimated maximum market price in INR)
-        - quantity: (Extracted quantity, default 1)
-        - tags: (Array of 5 SEO tags)
-        - greeting: (A warm conversational greeting for the artisan in their language)
-        - title: (Catchy, SEO-friendly marketing title)
-        - description: (Story-based marketing description highlighting craftsmanship)
-        - suggested_price: (Realistic selling price based on max_price)
-        - profit_margin: (Estimated profit based on 40% margin)
-
-        No code blocks, no intro, just JSON.
-      `;
-
-      const response = await window.puter.ai.chat(prompt);
-      const rawText = response.toString().trim();
+      // Use our backend API which connects to Google Gemini
+      const response = await analyzeProduct({
+        description: description,
+        language: user.language || 'hi'
+      });
       
-      // Clean potential markdown blocks
-      const jsonString = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-      const data = JSON.parse(jsonString);
-      
-      setResult(data);
+      setResult(response.data);
       setStep(2);
     } catch (err) {
-      console.error('Puter AI Analysis failed:', err);
+      console.error('Backend AI Analysis failed:', err);
       alert('AI was unable to analyze your description. Please try again.');
     } finally {
       setAnalyzing(false);
