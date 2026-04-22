@@ -30,58 +30,66 @@ async def analyze_product_input(description: str, language: str = "hi") -> Dict[
     if not GEMINI_API_KEY:
         return await simulate_analysis(description, language)
 
-    try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = f"""
-        Act as a product market expert for rural products in India.
-        Analyze the following product description: "{description}"
-        Language of description: {language}
+    # List of models to try in order of preference
+    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
+    
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            prompt = f"""
+            Act as a product market expert for rural products in India.
+            Analyze the following product description: "{description}"
+            Language of description: {language}
 
-        Respond in strictly JSON format with these fields:
-        - product_name: (Short specific name)
-        - category: (One of: handloom, pottery, jewelry, food, other)
-        - material: (Primary material)
-        - min_price: (Estimated minimum market price in INR)
-        - max_price: (Estimated maximum market price in INR)
-        - quantity: (Extracted quantity, default 1)
-        - tags: (List of 5 SEO tags)
-        - greeting: (A warm conversational greeting for the artisan in {language})
-        - title: (Catchy, SEO-friendly marketing title)
-        - description: (Story-based marketing description highlighting craftsmanship)
-        
-        Example JSON:
-        {{
-            "product_name": "Blue Silk Dupatta",
-            "category": "handloom",
-            "material": "Silk",
-            "min_price": 500,
-            "max_price": 800,
-            "quantity": 5,
-            "tags": ["handmade", "silk", "handloom", "ethnic", "traditional"],
-            "greeting": "नमस्ते! आपके पास बहुत सुंदर रेशमी दुपट्टा है।",
-            "title": "Beautiful Handmade Blue Silk Dupatta",
-            "description": "A stunning handcrafted blue silk dupatta perfect for any occasion."
-        }}
-        """
-        response = model.generate_content(prompt)
-        # Clean up possible markdown in response
-        raw_text = response.text.strip()
-        if "```json" in raw_text:
-            raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-        
-        data = json.loads(raw_text)
-        
-        # Calculate suggested price and profit margin
-        avg_price = (data["min_price"] + data["max_price"]) / 2
-        data["suggested_price"] = int(avg_price * 1.1)  # 10% premium for quality listing
-        data["profit_margin"] = int(data["suggested_price"] * 0.4) # Typical 40% margin for local goods
-        data["language"] = language
-        
-        return data
-
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
-        return await simulate_analysis(description, language)
+            Respond in strictly JSON format with these fields:
+            - product_name: (Short specific name)
+            - category: (One of: handloom, pottery, jewelry, food, other)
+            - material: (Primary material)
+            - min_price: (Estimated minimum market price in INR)
+            - max_price: (Estimated maximum market price in INR)
+            - quantity: (Extracted quantity, default 1)
+            - tags: (List of 5 SEO tags)
+            - greeting: (A warm conversational greeting for the artisan in {language})
+            - title: (Catchy, SEO-friendly marketing title)
+            - description: (Story-based marketing description highlighting craftsmanship)
+            
+            Example JSON:
+            {{
+                "product_name": "Blue Silk Dupatta",
+                "category": "handloom",
+                "material": "Silk",
+                "min_price": 500,
+                "max_price": 800,
+                "quantity": 5,
+                "tags": ["handmade", "silk", "handloom", "ethnic", "traditional"],
+                "greeting": "नमस्ते! आपके पास बहुत सुंदर रेशमी दुपट्टा है।",
+                "title": "Beautiful Handmade Blue Silk Dupatta",
+                "description": "A stunning handcrafted blue silk dupatta perfect for any occasion."
+            }}
+            """
+            response = model.generate_content(prompt)
+            # Clean up possible markdown in response
+            raw_text = response.text.strip()
+            if "```json" in raw_text:
+                raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+            
+            data = json.loads(raw_text)
+            
+            # Calculate suggested price and profit margin
+            avg_price = (data["min_price"] + data["max_price"]) / 2
+            data["suggested_price"] = int(avg_price * 1.1)
+            data["profit_margin"] = int(data["suggested_price"] * 0.4)
+            data["language"] = language
+            
+            return data
+        except Exception as e:
+            last_error = e
+            print(f"Attempt with {model_name} failed: {e}")
+            continue # Try next model
+            
+    print(f"All Gemini models failed. Last error: {last_error}")
+    return await simulate_analysis(description, language)
 
 async def generate_product_listing(analysis: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -90,30 +98,37 @@ async def generate_product_listing(analysis: Dict[str, Any]) -> Dict[str, Any]:
     if not GEMINI_API_KEY:
         return await simulate_listing_gen(analysis)
 
-    try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = f"""
-        Generate a professional e-commerce listing for this product:
-        Name: {analysis['product_name']}
-        Category: {analysis['category']}
-        Material: {analysis['material']}
-        Tags: {', '.join(analysis['tags'])}
+    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
+    
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            prompt = f"""
+            Generate a professional e-commerce listing for this product:
+            Name: {analysis['product_name']}
+            Category: {analysis['category']}
+            Material: {analysis['material']}
+            Tags: {', '.join(analysis['tags'])}
 
-        Respond in JSON:
-        - title: (Catchy, SEO-friendly title)
-        - description: (Story-based description highlighting the rural craftsmanship and quality)
-        """
-        response = model.generate_content(prompt)
-        raw_text = response.text.strip()
-        if "```json" in raw_text:
-            raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-        
-        listing = json.loads(raw_text)
-        return {**analysis, **listing}
-
-    except Exception as e:
-        print(f"Gemini API Error in listing: {e}")
-        return await simulate_listing_gen(analysis)
+            Respond in JSON:
+            - title: (Catchy, SEO-friendly title)
+            - description: (Story-based description highlighting the rural craftsmanship and quality)
+            """
+            response = model.generate_content(prompt)
+            raw_text = response.text.strip()
+            if "```json" in raw_text:
+                raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+            
+            listing = json.loads(raw_text)
+            return {**analysis, **listing}
+        except Exception as e:
+            last_error = e
+            print(f"Attempt with {model_name} failed: {e}")
+            continue
+            
+    print(f"All Gemini models failed in listing. Last error: {last_error}")
+    return await simulate_listing_gen(analysis)
 
 # --- Fallback / Simulation Functions ---
 
