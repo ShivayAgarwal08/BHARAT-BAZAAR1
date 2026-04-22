@@ -31,7 +31,7 @@ async def analyze_product_input(description: str, language: str = "hi") -> Dict[
         return await simulate_analysis(description, language)
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         prompt = f"""
         Act as a product market expert for rural products in India.
         Analyze the following product description: "{description}"
@@ -91,7 +91,7 @@ async def generate_product_listing(analysis: Dict[str, Any]) -> Dict[str, Any]:
         return await simulate_listing_gen(analysis)
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         prompt = f"""
         Generate a professional e-commerce listing for this product:
         Name: {analysis['product_name']}
