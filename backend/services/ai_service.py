@@ -46,6 +46,8 @@ async def analyze_product_input(description: str, language: str = "hi") -> Dict[
         - quantity: (Extracted quantity, default 1)
         - tags: (List of 5 SEO tags)
         - greeting: (A warm conversational greeting for the artisan in {language})
+        - title: (Catchy, SEO-friendly marketing title)
+        - description: (Story-based marketing description highlighting craftsmanship)
         
         Example JSON:
         {{
@@ -56,7 +58,9 @@ async def analyze_product_input(description: str, language: str = "hi") -> Dict[
             "max_price": 800,
             "quantity": 5,
             "tags": ["handmade", "silk", "handloom", "ethnic", "traditional"],
-            "greeting": "नमस्ते! आपके पास बहुत सुंदर रेशमी दुपट्टा है।"
+            "greeting": "नमस्ते! आपके पास बहुत सुंदर रेशमी दुपट्टा है।",
+            "title": "Beautiful Handmade Blue Silk Dupatta",
+            "description": "A stunning handcrafted blue silk dupatta perfect for any occasion."
         }}
         """
         response = model.generate_content(prompt)
@@ -71,6 +75,7 @@ async def analyze_product_input(description: str, language: str = "hi") -> Dict[
         avg_price = (data["min_price"] + data["max_price"]) / 2
         data["suggested_price"] = int(avg_price * 1.1)  # 10% premium for quality listing
         data["profit_margin"] = int(data["suggested_price"] * 0.4) # Typical 40% margin for local goods
+        data["language"] = language
         
         return data
 
@@ -141,7 +146,8 @@ async def simulate_analysis(description: str, language: str = "hi") -> Dict[str,
         "tags": ["handmade", "rural-business", category, "local-craft"],
         "greeting": GREETINGS.get(language, GREETINGS["en"]),
         "title": "Authentic Rural Craft",
-        "description": f"Handcrafted {category} item."
+        "description": f"Handcrafted {category} item.",
+        "language": language
     }
 
 async def simulate_listing_gen(analysis: Dict[str, Any]) -> Dict[str, Any]:
