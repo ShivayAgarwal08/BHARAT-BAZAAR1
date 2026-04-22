@@ -31,7 +31,7 @@ async def analyze_product_input(description: str, language: str = "hi") -> Dict[
         return await simulate_analysis(description, language)
 
     # List of models to try in order of preference
-    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
+    models_to_try = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest', 'gemini-2.0-flash']
     
     last_error = None
     for model_name in models_to_try:
@@ -98,7 +98,7 @@ async def generate_product_listing(analysis: Dict[str, Any]) -> Dict[str, Any]:
     if not GEMINI_API_KEY:
         return await simulate_listing_gen(analysis)
 
-    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
+    models_to_try = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest', 'gemini-2.0-flash']
     
     last_error = None
     for model_name in models_to_try:
