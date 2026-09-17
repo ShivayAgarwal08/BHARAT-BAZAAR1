@@ -10,7 +10,9 @@ import models
 
 import os
 
-SECRET_KEY = os.getenv("JWT_SECRET", "vocallocal-secret-key-2024-hackathon")
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET must be set before starting the API")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

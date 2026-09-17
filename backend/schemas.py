@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
+from pydantic import Field
 from datetime import datetime
 
 
@@ -7,8 +8,8 @@ from datetime import datetime
 class UserCreate(BaseModel):
     name: str
     email: str
-    password: str
-    role: str = "artisan"
+    password: str = Field(min_length=8)
+    role: Literal["artisan", "intern"] = "artisan"
     language: str = "en"
     location: str = ""
     phone_number: str = ""
@@ -18,7 +19,7 @@ class UserCreate(BaseModel):
 
 class UserLogin(BaseModel):
     email: str
-    password: str
+    password: str = Field(min_length=1)
 
 class UserOut(BaseModel):
     id: int
@@ -32,6 +33,18 @@ class UserOut(BaseModel):
     services: str
     pricing: str
     created_at: datetime
+    class Config:
+        from_attributes = True
+
+class PublicUserOut(BaseModel):
+    id: int
+    name: str
+    role: str
+    language: str
+    location: str
+    bio: str
+    services: str
+    pricing: str
     class Config:
         from_attributes = True
 
@@ -66,7 +79,7 @@ class ProductOut(BaseModel):
     video_url: str
     language: str
     created_at: datetime
-    owner: Optional["UserOut"] = None
+    owner: Optional["PublicUserOut"] = None
     class Config:
         from_attributes = True
 

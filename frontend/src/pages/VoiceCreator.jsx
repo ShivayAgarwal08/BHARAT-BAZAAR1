@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { analyzeProduct, generateListing } from '../api/ai'
+import { analyzeProduct } from '../api/ai'
 import { createProduct } from '../api/product'
 import { MdMic, MdStop, MdAutoAwesome, MdCloudUpload, MdArrowForward, MdPhotoCamera, MdVideocam } from 'react-icons/md'
 

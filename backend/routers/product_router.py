@@ -14,6 +14,8 @@ async def create_product(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    if current_user.role != "artisan":
+        raise HTTPException(status_code=403, detail="Only artisans can create products")
     if data.ai_data:
         ai = data.ai_data
     else:
@@ -73,6 +75,8 @@ def delete_product(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    if current_user.role != "artisan":
+        raise HTTPException(status_code=403, detail="Only artisans can delete products")
     product = db.query(models.Product).filter(
         models.Product.id == product_id,
         models.Product.user_id == current_user.id

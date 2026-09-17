@@ -3,6 +3,11 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 import os
+from dotenv import load_dotenv
+
+# Load the backend-local development configuration before reading DATABASE_URL.
+# Hosted environments continue to take precedence through their process variables.
+load_dotenv()
 
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./vocallocal.db")
 

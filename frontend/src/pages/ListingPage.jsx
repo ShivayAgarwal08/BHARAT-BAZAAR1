@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getProduct, deleteProduct } from '../api/product'
-import { getInterns, hireIntern, getInvitations } from '../api/manager'
+import { getInterns, hireIntern, getInvitations, requestManager } from '../api/manager'
 import { MdDelete, MdCheckCircle, MdEdit, MdContentCopy, MdPersonAdd } from 'react-icons/md'
 
 export default function ListingPage() {
@@ -32,7 +32,9 @@ export default function ListingPage() {
           try {
              const prod = await getProduct(id);
              setProduct(prod.data);
-          } catch(e) {}
+          } catch (fallbackError) {
+            console.error('Fallback product fetch failed', fallbackError)
+          }
         }
       } finally {
         setLoading(false)
@@ -69,7 +71,19 @@ export default function ListingPage() {
       await deleteProduct(id)
       navigate('/dashboard')
     } catch (err) {
+      console.error('Failed to delete product', err)
       alert("Failed to delete product")
+    }
+  }
+
+  const handleCreateManagerRequest = async () => {
+    const description = prompt('What help do you need from a student manager?')
+    if (description === null) return
+    try {
+      await requestManager({ product_id: Number(id), description })
+      alert('Your manager request is now live in the marketplace.')
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Could not create the manager request')
     }
   }
 
@@ -197,6 +211,9 @@ export default function ListingPage() {
               </div>
 
               <div style={{ marginTop: 24 }}>
+                <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center', marginBottom: 12 }} onClick={handleCreateManagerRequest}>
+                  <MdPersonAdd /> Post Manager Request
+                </button>
                 <div className="badge badge-amber" style={{ width: '100%', justifyContent: 'center', marginBottom: 16, padding: '8px' }}>
                   ⭐ Grow Your Business
                 </div>

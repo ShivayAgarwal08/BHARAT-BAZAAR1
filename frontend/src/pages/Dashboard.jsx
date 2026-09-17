@@ -50,6 +50,7 @@ export default function Dashboard() {
       const { data } = await getInvitations()
       setInvitations(data)
     } catch (err) {
+      console.error('Failed to update invitation status', err)
       alert("Failed to update status")
     }
   }

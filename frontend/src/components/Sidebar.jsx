@@ -17,7 +17,9 @@ export default function Sidebar() {
   const allItems = [
     { to: '/dashboard', icon: <MdDashboard />, label: 'Dashboard' },
     { to: '/create', icon: <MdAdd />, label: 'Add Product', roles: ['artisan'] },
-    { to: '/alerts', icon: <MdMessage />, label: 'Messages', roles: ['artisan'] },
+    { to: '/marketplace', icon: <MdStorefront />, label: 'Marketplace' },
+    { to: '/impact', icon: <MdBarChart />, label: 'Impact Dashboard' },
+    { to: '/alerts', icon: <MdMessage />, label: 'Messages', roles: ['artisan', 'intern'] },
   ]
 
   const items = allItems.filter(item => !item.roles || item.roles.includes(user.role))

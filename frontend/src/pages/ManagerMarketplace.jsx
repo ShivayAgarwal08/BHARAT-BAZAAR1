@@ -1,25 +1,37 @@
 import { useState, useEffect } from 'react'
-import { listRequests, applyForManager, selectIntern, getApplications } from '../api/manager'
+import { listRequests, myRequests, applyForManager, selectIntern, getApplications } from '../api/manager'
 import { getAllProducts } from '../api/product'
 import { MdTrendingUp, MdVerified, MdPerson, MdSchool, MdArrowForward } from 'react-icons/md'
 
 export default function ManagerMarketplace() {
   const [requests, setRequests] = useState([])
   const [products, setProducts] = useState([])
+  const [ownRequests, setOwnRequests] = useState([])
+  const [applicationsByRequest, setApplicationsByRequest] = useState({})
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('browse') // 'browse' or 'applications' (for artisans)
   const user = JSON.parse(localStorage.getItem('vl_user') || '{}')
   const isIntern = user.role === 'intern'
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [reqRes, prodRes] = await Promise.all([
+        const [reqRes, prodRes, ownReqRes] = await Promise.all([
           listRequests(),
-          getAllProducts()
+          getAllProducts(),
+          isIntern ? Promise.resolve({ data: [] }) : myRequests(),
         ])
         setRequests(reqRes.data)
         setProducts(prodRes.data)
+        setOwnRequests(ownReqRes.data)
+        if (!isIntern) {
+          const applicationEntries = await Promise.all(
+            ownReqRes.data.map(async (request) => [
+              request.id,
+              (await getApplications(request.id)).data,
+            ])
+          )
+          setApplicationsByRequest(Object.fromEntries(applicationEntries))
+        }
       } catch (err) {
         console.error('Failed to fetch marketplace data', err)
       } finally {
@@ -27,7 +39,7 @@ export default function ManagerMarketplace() {
       }
     }
     fetchData()
-  }, [])
+  }, [isIntern])
 
   const handleApply = async (requestId) => {
     const coverNote = prompt("Enter a short cover note for the artisan:")
@@ -43,6 +55,22 @@ export default function ManagerMarketplace() {
       alert("Application sent successfully!")
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to apply")
+    }
+  }
+
+  const handleSelect = async (applicationId) => {
+    try {
+      await selectIntern(applicationId)
+      const refreshed = await Promise.all(
+        ownRequests.map(async (request) => [
+          request.id,
+          (await getApplications(request.id)).data,
+        ])
+      )
+      setApplicationsByRequest(Object.fromEntries(refreshed))
+      alert('Intern selected successfully!')
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Could not select this intern')
     }
   }
 
@@ -170,6 +198,37 @@ export default function ManagerMarketplace() {
            </div>
         </aside>
       </div>
+
+      {!isIntern && ownRequests.length > 0 && (
+        <section style={{ marginTop: 32 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Applications to Your Requests</h2>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {ownRequests.map((request) => {
+              const applications = applicationsByRequest[request.id] || []
+              return (
+                <div key={request.id} className="card" style={{ padding: 20 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 12 }}>Request #{request.id}: {request.description || 'Manager support needed'}</div>
+                  {applications.length === 0 ? (
+                    <div style={{ color: '#9488b8', fontSize: 14 }}>No applications yet.</div>
+                  ) : applications.map((application) => (
+                    <div key={application.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>Intern #{application.intern_id}</div>
+                        <div style={{ fontSize: 14, color: '#5a4f7a' }}>{application.cover_note || 'No cover note provided.'}</div>
+                      </div>
+                      {application.status === 'pending' ? (
+                        <button className="btn btn-primary btn-sm" onClick={() => handleSelect(application.id)}>Select</button>
+                      ) : (
+                        <span className="tag">{application.status}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

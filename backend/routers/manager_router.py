@@ -13,9 +13,14 @@ def create_request(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    product = db.query(models.Product).filter(models.Product.id == data.product_id).first()
+    if current_user.role != "artisan":
+        raise HTTPException(status_code=403, detail="Only artisans can create manager requests")
+    product = db.query(models.Product).filter(
+        models.Product.id == data.product_id,
+        models.Product.user_id == current_user.id,
+    ).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise HTTPException(status_code=404, detail="Your product was not found")
     req = models.ManagerRequest(
         artisan_id=current_user.id,
         product_id=data.product_id,
@@ -50,6 +55,14 @@ def apply(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    if current_user.role != "intern":
+        raise HTTPException(status_code=403, detail="Only interns can apply to manager requests")
+    request = db.query(models.ManagerRequest).filter(
+        models.ManagerRequest.id == data.request_id,
+        models.ManagerRequest.status == "open",
+    ).first()
+    if not request:
+        raise HTTPException(status_code=404, detail="Open manager request not found")
     existing = db.query(models.InternApplication).filter(
         models.InternApplication.intern_id == current_user.id,
         models.InternApplication.request_id == data.request_id
@@ -70,7 +83,17 @@ def apply(
 
 
 @router.get("/applications/{request_id}", response_model=list[schemas.InternApplicationOut])
-def get_applications(request_id: int, db: Session = Depends(get_db)):
+def get_applications(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    request = db.query(models.ManagerRequest).filter(
+        models.ManagerRequest.id == request_id,
+        models.ManagerRequest.artisan_id == current_user.id,
+    ).first()
+    if not request:
+        raise HTTPException(status_code=404, detail="Your manager request was not found")
     return db.query(models.InternApplication).filter(
         models.InternApplication.request_id == request_id
     ).all()
@@ -87,21 +110,27 @@ def select_intern(
     ).first()
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
-    application.status = "selected"
     req = db.query(models.ManagerRequest).filter(
         models.ManagerRequest.id == application.request_id
     ).first()
-    if req:
-        req.status = "in_progress"
+    if not req or req.artisan_id != current_user.id or current_user.role != "artisan":
+        raise HTTPException(status_code=403, detail="Only the requesting artisan can select an intern")
+    application.status = "selected"
+    req.status = "in_progress"
     db.commit()
     return {"message": "Intern selected successfully"}
 
 
 # --- NEW DIRECT HIRING FLOW ---
 
-@router.get("/interns", response_model=list[schemas.UserOut])
-def get_all_interns(db: Session = Depends(get_db)):
+@router.get("/interns", response_model=list[schemas.PublicUserOut])
+def get_all_interns(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """List all available interns on the platform"""
+    if current_user.role != "artisan":
+        raise HTTPException(status_code=403, detail="Only artisans can browse intern profiles")
     return db.query(models.User).filter(models.User.role == "intern").all()
 
 
@@ -119,6 +148,23 @@ def send_hire_request(
     if not intern:
         raise HTTPException(status_code=404, detail="Intern not found")
         
+    if data.product_id is not None:
+        product = db.query(models.Product).filter(
+            models.Product.id == data.product_id,
+            models.Product.user_id == current_user.id,
+        ).first()
+        if not product:
+            raise HTTPException(status_code=404, detail="Your product was not found")
+
+    existing = db.query(models.InternHireRequest).filter(
+        models.InternHireRequest.artisan_id == current_user.id,
+        models.InternHireRequest.intern_id == data.intern_id,
+        models.InternHireRequest.product_id == data.product_id,
+        models.InternHireRequest.status == "pending",
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="A pending invitation already exists")
+
     hire_req = models.InternHireRequest(
         artisan_id=current_user.id,
         intern_id=data.intern_id,
