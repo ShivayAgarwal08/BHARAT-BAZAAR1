@@ -4,6 +4,15 @@ import { analyzeProduct } from '../api/ai'
 import { createProduct } from '../api/product'
 import { MdMic, MdStop, MdAutoAwesome, MdCloudUpload, MdArrowForward, MdPhotoCamera, MdVideocam } from 'react-icons/md'
 
+const categoryPlaceholder = (category = '') => {
+  const normalized = category.toLowerCase()
+  if (/(saree|sari|textile|handloom|fabric|weav)/.test(normalized)) return { icon: '🧵', label: 'Textile product' }
+  if (/(pottery|diya|ceramic|clay)/.test(normalized)) return { icon: '🏺', label: 'Pottery product' }
+  if (/(jewel|bead|ornament)/.test(normalized)) return { icon: '💍', label: 'Jewelry product' }
+  if (/(wood|carv|bamboo|craft)/.test(normalized)) return { icon: '🪵', label: 'Craft product' }
+  return { icon: '🛍️', label: 'Product placeholder' }
+}
+
 export default function VoiceCreator() {
   const navigate = useNavigate()
   const user = JSON.parse(localStorage.getItem('vl_user') || '{}')
@@ -92,6 +101,8 @@ export default function VoiceCreator() {
       setLoading(false)
     }
   }
+
+  const placeholder = categoryPlaceholder(result?.category)
 
   return (
     <div className="animate-in" style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -182,7 +193,7 @@ export default function VoiceCreator() {
                 width: 120, height: 120, background: '#f3f0ff', borderRadius: 16,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60
               }}>
-                {result.category === 'handloom' ? '🧣' : '📦'}
+                {result.image_url ? <img src={result.image_url} alt={result.title || 'Product'} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} /> : <span role="img" aria-label={placeholder.label}>{placeholder.icon}</span>}
               </div>
               <div style={{ flex: 1 }}>
                 <span className="tag">{result.source === 'ai' ? 'AI-generated draft' : 'Basic draft from your description'}</span>
@@ -210,7 +221,22 @@ export default function VoiceCreator() {
               <textarea className="input" rows="4" value={result.description} onChange={(e) => setResult({ ...result, description: e.target.value })} />
             </div>
             <div className="form-group">
+              <label className="form-label">Category</label>
+              <input className="input" value={result.category || ''} onChange={(e) => setResult({ ...result, category: e.target.value })} placeholder="e.g. Textile, pottery, jewelry" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Materials</label>
+              <input className="input" value={(Array.isArray(result.materials) ? result.materials : []).join(', ')} onChange={(e) => setResult({ ...result, materials: e.target.value.split(',').map(item => item.trim()).filter(Boolean), material: e.target.value })} placeholder="Separate materials with commas" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Quantity</label>
+              <input className="input" type="number" min="1" step="1" value={result.quantity || 1} onChange={(e) => setResult({ ...result, quantity: Math.max(1, Number(e.target.value) || 1) })} />
+            </div>
+            <div className="form-group">
               <label className="form-label">Price</label>
+              {result.source === 'ai' && (
+                <p style={{ color: '#5a4f7a', fontSize: 13, margin: '6px 0 10px' }}>AI price estimate — please review before publishing</p>
+              )}
               <input className="input" type="number" min="0" step="0.01" placeholder="Enter your price" value={result.price} onChange={(e) => setResult({ ...result, price: e.target.value === '' ? '' : Number(e.target.value) })} />
             </div>
             <div className="form-group">

@@ -189,6 +189,11 @@ class AIAnalyzeResponse(BaseModel):
     tags: List[str]
     language: str
     source: Literal["ai", "basic_draft"]
+    materials: List[str] = Field(default_factory=list)
+    suggested_price_min: Optional[float] = None
+    suggested_price_max: Optional[float] = None
+    target_customer: Optional[str] = None
+    selling_points: List[str] = Field(default_factory=list)
 
 class MarketEstimationRequest(BaseModel):
     product_name: str

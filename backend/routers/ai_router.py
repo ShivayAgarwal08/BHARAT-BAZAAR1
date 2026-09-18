@@ -22,8 +22,15 @@ async def generate_listing(data: schemas.AIAnalyzeRequest):
         "source": result["source"],
         "title": result["title"],
         "description": result["description"],
+        "category": result.get("category"),
+        "materials": result.get("materials", []),
+        "quantity": result["quantity"],
         "tags": result["tags"],
         "suggested_price": result.get("suggested_price"),
+        "suggested_price_min": result.get("suggested_price_min"),
+        "suggested_price_max": result.get("suggested_price_max"),
+        "target_customer": result.get("target_customer"),
+        "selling_points": result.get("selling_points", []),
     }
 
 

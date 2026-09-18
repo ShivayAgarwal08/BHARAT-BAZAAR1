@@ -41,7 +41,7 @@ async def create_product(
         tags=tags_str,
         category=ai.get("category") or "",
         material=ai.get("material") or "",
-        quantity=data.quantity,
+        quantity=ai.get("quantity") or data.quantity,
         language=data.language,
     )
     db.add(product)

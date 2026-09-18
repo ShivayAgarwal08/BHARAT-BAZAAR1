@@ -13,5 +13,5 @@ aiofiles
 Pillow
 httpx
 alembic
-google-generativeai
+google-genai
 psycopg2-binary
