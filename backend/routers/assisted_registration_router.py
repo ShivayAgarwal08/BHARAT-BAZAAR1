@@ -1,19 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from auth import get_current_user
+from auth import require_admin
 from database import get_db
 import models
 import schemas
 
 
 router = APIRouter(prefix="/assisted-registration", tags=["assisted-registration"])
-
-
-def require_admin(current_user: models.User = Depends(get_current_user)) -> models.User:
-    if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access is required")
-    return current_user
 
 
 @router.post("/request", response_model=schemas.AssistedRegistrationRequestCreated, status_code=status.HTTP_201_CREATED)

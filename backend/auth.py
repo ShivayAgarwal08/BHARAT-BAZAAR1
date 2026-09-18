@@ -59,6 +59,15 @@ def get_current_user(
     return user
 
 
+def require_admin(current_user: models.User = Depends(get_current_user)) -> models.User:
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator access is required",
+        )
+    return current_user
+
+
 def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     db: Session = Depends(get_db)

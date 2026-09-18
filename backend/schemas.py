@@ -56,6 +56,32 @@ class Token(BaseModel):
     user: UserOut
 
 
+class AdminSummaryOut(BaseModel):
+    total_artisans: int
+    total_interns: int
+    pending_assisted_registrations: int
+    total_products: int
+    open_manager_requests: int
+
+
+class AdminArtisanOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: Literal["artisan"]
+    created_at: datetime
+    product_count: int
+
+
+class AdminInternOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: Literal["intern"]
+    created_at: datetime
+    application_count: int
+
+
 class AssistedRegistrationRequestCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=120)
     phone_number: str = Field(min_length=8, max_length=20)

@@ -5,9 +5,11 @@ import os
 
 from database import engine, Base
 import models
+from admin_bootstrap import bootstrap_initial_admin
 
 # Create tables
 Base.metadata.create_all(bind=engine)
+bootstrap_initial_admin()
 
 # Create upload dirs
 os.makedirs("uploads", exist_ok=True)
@@ -44,6 +46,7 @@ from routers.manager_router import router as manager_router
 from routers.image_router import router as image_router
 from routers.impact_router import router as impact_router
 from routers.assisted_registration_router import router as assisted_registration_router
+from routers.admin_router import router as admin_router
 
 app.include_router(auth_router)
 app.include_router(product_router)
@@ -52,6 +55,7 @@ app.include_router(manager_router)
 app.include_router(image_router)
 app.include_router(impact_router)
 app.include_router(assisted_registration_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")

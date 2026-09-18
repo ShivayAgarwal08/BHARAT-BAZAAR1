@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
+import AdminLayout from './components/AdminLayout'
 
 const Landing = lazy(() => import('./pages/Landing'))
 const Login = lazy(() => import('./pages/Login'))
@@ -11,10 +12,27 @@ const ListingPage = lazy(() => import('./pages/ListingPage'))
 const ManagerMarketplace = lazy(() => import('./pages/ManagerMarketplace'))
 const ImpactDashboard = lazy(() => import('./pages/ImpactDashboard'))
 const Alerts = lazy(() => import('./pages/Alerts'))
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
+const AdminAssistedRegistrations = lazy(() => import('./pages/AdminAssistedRegistrations'))
+const AdminUsers = lazy(() => import('./pages/AdminUsers'))
 
-function PrivateRoute({ children }) {
+function getStoredUser() {
+  try { return JSON.parse(localStorage.getItem('vl_user') || '{}') } catch { return {} }
+}
+
+function UserRoute({ children }) {
   const token = localStorage.getItem('vl_token')
-  return token ? children : <Navigate to="/login" replace />
+  const user = getStoredUser()
+  if (!token) return <Navigate to="/login" replace />
+  if (user.role === 'admin') return <Navigate to="/admin" replace />
+  return ['artisan', 'intern'].includes(user.role) ? children : <Navigate to="/login" replace />
+}
+
+function AdminRoute({ children }) {
+  const token = localStorage.getItem('vl_token')
+  const user = getStoredUser()
+  if (!token) return <Navigate to="/login" replace />
+  return user.role === 'admin' ? children : <Navigate to="/dashboard" replace />
 }
 
 function AppLayout({ children }) {
@@ -39,23 +57,27 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard" element={
-            <PrivateRoute><AppLayout><Dashboard /></AppLayout></PrivateRoute>
+            <UserRoute><AppLayout><Dashboard /></AppLayout></UserRoute>
           } />
           <Route path="/create" element={
-            <PrivateRoute><AppLayout><VoiceCreator /></AppLayout></PrivateRoute>
+            <UserRoute><AppLayout><VoiceCreator /></AppLayout></UserRoute>
           } />
           <Route path="/listing/:id" element={
-            <PrivateRoute><AppLayout><ListingPage /></AppLayout></PrivateRoute>
+            <UserRoute><AppLayout><ListingPage /></AppLayout></UserRoute>
           } />
           <Route path="/marketplace" element={
-            <PrivateRoute><AppLayout><ManagerMarketplace /></AppLayout></PrivateRoute>
+            <UserRoute><AppLayout><ManagerMarketplace /></AppLayout></UserRoute>
           } />
           <Route path="/impact" element={
-            <PrivateRoute><AppLayout><ImpactDashboard /></AppLayout></PrivateRoute>
+            <UserRoute><AppLayout><ImpactDashboard /></AppLayout></UserRoute>
           } />
           <Route path="/alerts" element={
-            <PrivateRoute><AppLayout><Alerts /></AppLayout></PrivateRoute>
+            <UserRoute><AppLayout><Alerts /></AppLayout></UserRoute>
           } />
+          <Route path="/admin" element={<AdminRoute><AdminLayout><AdminDashboard /></AdminLayout></AdminRoute>} />
+          <Route path="/admin/assisted-registrations" element={<AdminRoute><AdminLayout><AdminAssistedRegistrations /></AdminLayout></AdminRoute>} />
+          <Route path="/admin/artisans" element={<AdminRoute><AdminLayout><AdminUsers role="artisan" /></AdminLayout></AdminRoute>} />
+          <Route path="/admin/students" element={<AdminRoute><AdminLayout><AdminUsers role="intern" /></AdminLayout></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

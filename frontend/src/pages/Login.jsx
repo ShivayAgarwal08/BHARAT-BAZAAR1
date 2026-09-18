@@ -17,7 +17,7 @@ export default function Login() {
       const { data } = await login(form)
       localStorage.setItem('vl_token', data.access_token)
       localStorage.setItem('vl_user', JSON.stringify(data.user))
-      navigate('/dashboard')
+      navigate(data.user.role === 'admin' ? '/admin' : '/dashboard')
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
     } finally {
