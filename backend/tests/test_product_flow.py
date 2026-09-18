@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 # Configure an isolated database before importing the application.
 _temp_dir = tempfile.TemporaryDirectory()
@@ -72,6 +73,55 @@ class ProductFlowTests(unittest.TestCase):
         self.assertEqual(len(listed.json()), 1)
         self.assertEqual(listed.json()[0]["title"], "Handmade Clay Diyas")
         self.assertEqual(listed.json()[0]["quantity"], 20)
+
+    def test_blank_ai_description_is_rejected_before_gemini(self):
+        with patch("routers.ai_router.analyze_product_input", side_effect=AssertionError("Gemini must not be called")):
+            response = self.client.post(
+                "/ai/analyze-product",
+                json={"description": "   ", "language": "en"},
+            )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("Please describe your product", response.text)
+
+    def test_analyze_endpoint_preserves_spoken_transcript_and_contract(self):
+        transcript = "मेरे पास 10 नीली बनारसी सिल्क साड़ियाँ हैं जिन पर गोल्डन ज़री का काम है"
+        ai_result = {
+            "source": "ai",
+            "product_name": "नीली बनारसी सिल्क साड़ियाँ",
+            "title": "नीली बनारसी सिल्क साड़ियाँ",
+            "description": transcript,
+            "category": "साड़ियाँ",
+            "material": "बनारसी सिल्क, गोल्डन ज़री",
+            "materials": ["बनारसी सिल्क", "गोल्डन ज़री"],
+            "quantity": 10,
+            "tags": ["बनारसी साड़ी", "गोल्डन ज़री"],
+            "min_price": None,
+            "max_price": None,
+            "suggested_price": None,
+            "suggested_price_min": None,
+            "suggested_price_max": None,
+            "target_customer": None,
+            "selling_points": [],
+            "profit_margin": None,
+            "greeting": None,
+            "language": "hi",
+        }
+        with patch("routers.ai_router.analyze_product_input", new_callable=AsyncMock, return_value=ai_result) as analyze:
+            response = self.client.post(
+                "/ai/analyze-product",
+                json={"description": transcript, "language": "hi"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        analyze.assert_awaited_once_with(transcript, "hi")
+        payload = response.json()
+        self.assertEqual(payload["source"], "ai")
+        self.assertEqual(payload["title"], ai_result["title"])
+        self.assertEqual(payload["description"], transcript)
+        self.assertEqual(payload["materials"], ai_result["materials"])
+        self.assertEqual(payload["quantity"], 10)
+        self.assertEqual(payload["tags"], ai_result["tags"])
 
 
 if __name__ == "__main__":

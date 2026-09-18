@@ -2,15 +2,56 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { analyzeProduct } from '../api/ai'
 import { createProduct } from '../api/product'
-import { MdMic, MdStop, MdAutoAwesome, MdCloudUpload, MdArrowForward, MdPhotoCamera, MdVideocam } from 'react-icons/md'
+import { MdMic, MdStop, MdAutoAwesome, MdCloudUpload, MdPhotoCamera, MdVideocam } from 'react-icons/md'
 
 const categoryPlaceholder = (category = '') => {
   const normalized = category.toLowerCase()
-  if (/(saree|sari|textile|handloom|fabric|weav)/.test(normalized)) return { icon: '🧵', label: 'Textile product' }
-  if (/(pottery|diya|ceramic|clay)/.test(normalized)) return { icon: '🏺', label: 'Pottery product' }
-  if (/(jewel|bead|ornament)/.test(normalized)) return { icon: '💍', label: 'Jewelry product' }
-  if (/(wood|carv|bamboo|craft)/.test(normalized)) return { icon: '🪵', label: 'Craft product' }
+  if (/(saree|sari|textile|handloom|fabric|weav|साड़ी|साड़ियाँ|वस्त्र|कपड़ा)/.test(normalized)) return { icon: '🧵', label: 'Textile product' }
+  if (/(pottery|diya|ceramic|clay|मिट्टी|दीया)/.test(normalized)) return { icon: '🏺', label: 'Pottery product' }
+  if (/(jewel|bead|ornament|आभूषण|गहना)/.test(normalized)) return { icon: '💍', label: 'Jewelry product' }
+  if (/(wood|carv|bamboo|craft|लकड़ी|बांस)/.test(normalized)) return { icon: '🪵', label: 'Craft product' }
   return { icon: '🛍️', label: 'Product placeholder' }
+}
+
+const transcriptTitle = (transcript) => transcript.trim().split(/\s+/).slice(0, 12).join(' ').slice(0, 120)
+
+const createSafeBasicDraft = (transcript, language) => ({
+  source: 'basic_draft',
+  product_name: transcriptTitle(transcript),
+  title: transcriptTitle(transcript),
+  description: transcript,
+  category: null,
+  material: null,
+  materials: [],
+  quantity: 1,
+  tags: [],
+  suggested_price: null,
+  suggested_price_min: null,
+  suggested_price_max: null,
+  price: '',
+  language,
+})
+
+const normalizeDraft = (data, transcript, language) => {
+  const title = typeof data?.title === 'string' ? data.title.trim() : ''
+  const generatedDescription = typeof data?.description === 'string' ? data.description.trim() : ''
+  const usable = title.length > 0 && generatedDescription.length > 0
+
+  if (!usable) return createSafeBasicDraft(transcript, language)
+
+  return {
+    ...data,
+    source: data.source === 'ai' ? 'ai' : 'basic_draft',
+    title,
+    product_name: data.product_name || title,
+    description: generatedDescription,
+    category: typeof data.category === 'string' ? data.category : null,
+    materials: Array.isArray(data.materials) ? data.materials.filter(Boolean) : [],
+    quantity: Number.isInteger(Number(data.quantity)) && Number(data.quantity) > 0 ? Number(data.quantity) : 1,
+    tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
+    price: data.suggested_price ?? '',
+    language,
+  }
 }
 
 export default function VoiceCreator() {
@@ -25,20 +66,34 @@ export default function VoiceCreator() {
 
   const [step, setStep] = useState(1) // 1: Input, 2: Analysis result
   const [description, setDescription] = useState('')
+  const [finalTranscript, setFinalTranscript] = useState('')
+  const [interimTranscript, setInterimTranscript] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [inputError, setInputError] = useState('')
 
   const recognitionRef = useRef(null)
+  const descriptionRef = useRef('')
+  const finalTranscriptRef = useRef('')
+
+  const commitDescription = (nextDescription) => {
+    descriptionRef.current = nextDescription
+    setDescription(nextDescription)
+  }
 
   const startRecording = () => {
-    setIsRecording(true)
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert("Your browser doesn't support speech recognition. Please type instead.")
-      setIsRecording(false)
       return
     }
+
+    setInputError('')
+    finalTranscriptRef.current = descriptionRef.current.trim()
+    setFinalTranscript(finalTranscriptRef.current)
+    setInterimTranscript('')
+    setIsRecording(true)
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     recognitionRef.current = new SpeechRecognition()
@@ -47,38 +102,72 @@ export default function VoiceCreator() {
     recognitionRef.current.lang = 'hi-IN' // Default to Hindi, can be dynamic
 
     recognitionRef.current.onresult = (event) => {
-      let transcript = ''
+      let committedTranscript = finalTranscriptRef.current
+      let nextInterimTranscript = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript
+        const segment = event.results[i][0].transcript.trim()
+        if (!segment) continue
+        if (event.results[i].isFinal) {
+          committedTranscript = [committedTranscript, segment].filter(Boolean).join(' ')
+        } else {
+          nextInterimTranscript = [nextInterimTranscript, segment].filter(Boolean).join(' ')
+        }
       }
-      setDescription(transcript)
+      finalTranscriptRef.current = committedTranscript
+      setFinalTranscript(committedTranscript)
+      setInterimTranscript(nextInterimTranscript)
+      commitDescription([committedTranscript, nextInterimTranscript].filter(Boolean).join(' '))
+    }
+
+    recognitionRef.current.onend = () => {
+      const committedTranscript = finalTranscriptRef.current.trim() || descriptionRef.current.trim()
+      if (committedTranscript) commitDescription(committedTranscript)
+      finalTranscriptRef.current = committedTranscript
+      setFinalTranscript(committedTranscript)
+      setInterimTranscript('')
+      setIsRecording(false)
+      recognitionRef.current = null
+    }
+
+    recognitionRef.current.onerror = () => {
+      setInputError('Speech recognition stopped. Please review or type your description before creating a draft.')
     }
 
     recognitionRef.current.start()
   }
 
   const stopRecording = () => {
-    setIsRecording(false)
     if (recognitionRef.current) {
       recognitionRef.current.stop()
     }
   }
 
   const handleAnalyze = async () => {
-    if (!description.trim()) return
+    if (isRecording) {
+      setInputError('Please stop recording and wait for your transcript before creating a draft.')
+      return
+    }
+    const transcript = descriptionRef.current.trim()
+    if (!transcript) {
+      setInputError('Please describe your product before creating a draft.')
+      return
+    }
+    setInputError('')
     setAnalyzing(true)
     try {
       // The backend returns either an AI draft or an honest local basic draft.
       const response = await analyzeProduct({
-        description: description,
+        description: transcript,
         language: user.language || 'hi'
       });
-      
-      setResult({ ...response.data, price: response.data.suggested_price ?? '' });
+      const draft = normalizeDraft(response.data, transcript, user.language || 'hi')
+      commitDescription(transcript)
+      setResult(draft)
       setStep(2);
     } catch (err) {
       console.error('Backend AI Analysis failed:', err);
-      alert('AI was unable to analyze your description. Please try again.');
+      const detail = err.response?.data?.detail
+      setInputError(typeof detail === 'string' ? detail : 'AI was unable to analyze your description. Please try again.')
     } finally {
       setAnalyzing(false);
     }
@@ -134,6 +223,11 @@ export default function VoiceCreator() {
             <p style={{ fontWeight: 600, color: isRecording ? '#ef4444' : '#6c3fcf' }}>
               {isRecording ? 'Listening... Click to stop' : 'Tap to speak in any language'}
             </p>
+            {isRecording && (interimTranscript || finalTranscript) && (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '8px 0 0' }}>
+                {interimTranscript ? `Recognizing: ${interimTranscript}` : `Recognized: ${finalTranscript}`}
+              </p>
+            )}
           </div>
 
           <div className="form-group">
@@ -143,9 +237,16 @@ export default function VoiceCreator() {
               rows="4"
               placeholder='Example: "मेरे पास हाथ से बुना हुआ नीला दुपट्टा है, 10 पीस हैं"'
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                const nextDescription = e.target.value
+                finalTranscriptRef.current = nextDescription
+                setFinalTranscript(nextDescription)
+                setInterimTranscript('')
+                commitDescription(nextDescription)
+              }}
             />
           </div>
+          {inputError && <p style={{ color: '#b42318', margin: '-8px 0 16px' }}>{inputError}</p>}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
             <div 
@@ -179,9 +280,9 @@ export default function VoiceCreator() {
               className="btn btn-primary" 
               style={{ flex: 1, justifyContent: 'center' }}
               onClick={handleAnalyze}
-              disabled={analyzing || !description.trim()}
+              disabled={isRecording || analyzing}
             >
-              {analyzing ? 'Preparing your draft...' : <><MdAutoAwesome /> Create Listing Draft</>}
+              {isRecording ? 'Finish recording to continue' : analyzing ? 'Preparing your draft...' : <><MdAutoAwesome /> Create Listing Draft</>}
             </button>
           </div>
         </div>

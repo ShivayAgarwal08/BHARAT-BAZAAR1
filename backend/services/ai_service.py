@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import re
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 # Gemini 3.6 Flash is a current, broadly available Flash model. Deployments can
 # select another supported model without a code change through GEMINI_MODEL.
 DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_TIMEOUT_SECONDS = 30
 ENGLISH_STOP_WORDS = {
     "a", "an", "and", "are", "for", "have", "i", "in", "is", "it", "of", "the", "to", "with",
 }
@@ -114,6 +116,8 @@ async def create_basic_draft(description: str, language: str = "hi") -> Dict[str
 
 def get_gemini_failure_category(error: Exception) -> str:
     """Classify failures for logs and operational testing without exposing them to users."""
+    if isinstance(error, TimeoutError):
+        return "network"
     message = str(error).lower()
     if any(term in message for term in ("api key", "apikey", "invalid key", "unauthenticated", "401")):
         return "invalid_key"
@@ -129,6 +133,9 @@ def get_gemini_failure_category(error: Exception) -> str:
 
 
 def _to_response(draft: GeminiProductDraft, language: str) -> Dict[str, Any]:
+    if not draft.title.strip() or not draft.description.strip():
+        raise ValueError("Gemini structured result has unusable title or description")
+
     estimated_price = None
     if draft.suggested_price_min is not None and draft.suggested_price_max is not None:
         estimated_price = (draft.suggested_price_min + draft.suggested_price_max) / 2
@@ -189,28 +196,51 @@ async def analyze_product_input(description: str, language: str = "hi") -> Dict[
     """Use Gemini structured output or return an explicitly labeled local draft."""
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
+        logger.info("Gemini product generation skipped; fallback_used=true reason=missing_api_key")
         return await create_basic_draft(description, language)
 
     model_name = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
     try:
+        logger.info(
+            "Gemini product generation requested model=%s transcript_length=%d",
+            model_name,
+            len(_clean_transcript(description)),
+        )
         client = genai.Client(
             api_key=api_key,
             http_options=types.HttpOptions(timeout=30000),
         )
-        response = client.interactions.create(
-            model=model_name,
-            input=_product_prompt(_clean_transcript(description), language),
-            response_format={
-                "type": "text",
-                "mime_type": "application/json",
-                "schema": GeminiProductDraft.model_json_schema(),
-            },
+        response = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.interactions.create,
+                model=model_name,
+                input=_product_prompt(_clean_transcript(description), language),
+                response_format={
+                    "type": "text",
+                    "mime_type": "application/json",
+                    "schema": GeminiProductDraft.model_json_schema(),
+                },
+            ),
+            timeout=GEMINI_TIMEOUT_SECONDS,
         )
         if not response.output_text:
             raise ValueError("Gemini returned no structured text")
-        return _to_response(GeminiProductDraft.model_validate_json(response.output_text), language)
+        result = _to_response(GeminiProductDraft.model_validate_json(response.output_text), language)
+        logger.info(
+            "Gemini product generation succeeded model=%s title_length=%d description_length=%d fallback_used=false",
+            model_name,
+            len(result["title"]),
+            len(result["description"]),
+        )
+        return result
     except Exception as error:
-        logger.warning("Gemini product generation failed (%s); using basic draft.", get_gemini_failure_category(error))
+        logger.warning(
+            "Gemini product generation failed model=%s error_class=%s status=%s category=%s fallback_used=true",
+            model_name,
+            type(error).__name__,
+            getattr(error, "status_code", None),
+            get_gemini_failure_category(error),
+        )
         return await create_basic_draft(description, language)
 
 

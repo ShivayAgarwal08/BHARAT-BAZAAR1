@@ -52,15 +52,16 @@ class AIServiceTests(unittest.TestCase):
         self.assertIsNone(result["profit_margin"])
 
     def test_provider_failure_uses_truthful_basic_draft(self):
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-            "services.ai_service.genai.Client", side_effect=RuntimeError("network timeout")
-        ):
-            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
+        for provider_error in ("404 Not Found", "network timeout", "503 Service Unavailable"):
+            with self.subTest(provider_error=provider_error), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
+                "services.ai_service.genai.Client", side_effect=RuntimeError(provider_error)
+            ):
+                result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
 
-        self.assertEqual(result["source"], "basic_draft")
-        self.assertEqual(result["quantity"], 20)
-        self.assertIsNone(result["suggested_price"])
-        self.assertIsNone(result["profit_margin"])
+            self.assertEqual(result["source"], "basic_draft")
+            self.assertEqual(result["quantity"], 20)
+            self.assertIsNone(result["suggested_price"])
+            self.assertIsNone(result["profit_margin"])
 
     def test_invalid_gemini_json_uses_truthful_basic_draft(self):
         client = SimpleNamespace(interactions=SimpleNamespace(create=lambda **_: SimpleNamespace(output_text="not json")))
@@ -71,6 +72,27 @@ class AIServiceTests(unittest.TestCase):
 
         self.assertEqual(result["source"], "basic_draft")
         self.assertIsNone(result["suggested_price"])
+
+    def test_empty_structured_fields_use_truthful_basic_draft(self):
+        client = SimpleNamespace(
+            interactions=SimpleNamespace(
+                create=lambda **_: SimpleNamespace(
+                    output_text=(
+                        '{"title":"","description":"","category":"",'
+                        '"materials":[],"quantity":1,"tags":[],'
+                        '"suggested_price_min":null,"suggested_price_max":null,'
+                        '"target_customer":null,"selling_points":[]}'
+                    )
+                )
+            )
+        )
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
+            "services.ai_service.genai.Client", return_value=client
+        ):
+            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
+
+        self.assertEqual(result["source"], "basic_draft")
+        self.assertEqual(result["description"], "I have 20 handmade clay diyas.")
 
 
 if __name__ == "__main__":

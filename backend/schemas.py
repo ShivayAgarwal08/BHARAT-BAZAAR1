@@ -174,6 +174,14 @@ class AIAnalyzeRequest(BaseModel):
     language: str = "en"
     quantity: int = 1
 
+    @field_validator("description")
+    @classmethod
+    def require_nonempty_description(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Please describe your product before creating a draft.")
+        return value
+
 class AIAnalyzeResponse(BaseModel):
     product_name: str
     category: Optional[str] = None
