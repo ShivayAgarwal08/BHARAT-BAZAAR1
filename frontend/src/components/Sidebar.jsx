@@ -1,7 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  MdDashboard, MdAdd, MdStorefront, MdBarChart,
-  MdLogout, MdPerson, MdMessage
+  MdDashboard, MdAdd, MdStorefront, MdLogout, MdMessage
 } from 'react-icons/md'
 
 export default function Sidebar() {
@@ -15,10 +14,9 @@ export default function Sidebar() {
   }
 
   const allItems = [
-    { to: '/dashboard', icon: <MdDashboard />, label: 'Dashboard' },
+    { to: '/dashboard', icon: <MdDashboard />, label: 'Home' },
     { to: '/create', icon: <MdAdd />, label: 'Add Product', roles: ['artisan'] },
-    { to: '/marketplace', icon: <MdStorefront />, label: 'Marketplace' },
-    { to: '/impact', icon: <MdBarChart />, label: 'Impact Dashboard' },
+    { to: '/marketplace', icon: <MdStorefront />, label: user.role === 'intern' ? 'Opportunities' : 'Find a Manager' },
     { to: '/alerts', icon: <MdMessage />, label: 'Messages', roles: ['artisan', 'intern'] },
   ]
 
@@ -40,13 +38,6 @@ export default function Sidebar() {
       ))}
 
       <div className="sidebar-bottom">
-        <button
-          className="sidebar-item"
-          title={user.name || 'Profile'}
-          style={{ fontSize: 20 }}
-        >
-          <MdPerson />
-        </button>
         <button
           className="sidebar-item"
           onClick={logout}

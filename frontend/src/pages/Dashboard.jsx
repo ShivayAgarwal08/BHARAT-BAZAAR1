@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { listProducts, getAllProducts } from '../api/product'
 import { getInvitations, updateInvitationStatus, sendAlert } from '../api/manager'
-import { MdAdd, MdTrendingUp, MdSell, MdPeople, MdSchool, MdRocketLaunch, MdCheckCircle } from 'react-icons/md'
+import { MdAdd, MdTrendingUp, MdSell, MdPeople, MdCheckCircle } from 'react-icons/md'
 
 export default function Dashboard() {
   const [products, setProducts] = useState([])
@@ -78,11 +78,11 @@ export default function Dashboard() {
       <div className="welcome-row">
         <div>
           <h1 className="welcome-title">Hi {(user.name || 'there').split(' ')[0]}, Ready to<br /><span>Grow Your Business?</span></h1>
-          <p className="page-subtitle">Your artisan products are making a difference. Check your progress below.</p>
+          <p className="page-subtitle">Manage your listed products and manager invitations.</p>
         </div>
         <div className="ai-avatar">
           <div className="float" style={{ fontSize: 80 }}>🤖</div>
-          <div className="ai-bubble">Namaste! 👋<br />I analyzed your latest sales!</div>
+          <div className="ai-bubble">Namaste! 👋<br />Create or manage your listings here.</div>
         </div>
       </div>
 
@@ -164,9 +164,9 @@ export default function Dashboard() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 700 }}>{product.title}</h3>
-                <span className="tag">{product.category}</span>
+                <span className="tag">{product.category || 'Category not set'}</span>
               </div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#6c3fcf' }}>₹{product.price}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#6c3fcf' }}>{product.price == null ? 'Price not set' : `₹${product.price}`}</div>
               <div style={{ fontSize: 12, color: '#9488b8', marginTop: 4 }}>Qty: {product.quantity} units</div>
             </Link>
           ))}
@@ -180,8 +180,8 @@ export default function Dashboard() {
     <>
       <div className="welcome-row">
         <div>
-          <h1 className="welcome-title">Welcome Back, {(user.name || 'there').split(' ')[0]}!<br /><span>Your Impact Portfolio</span></h1>
-          <p className="page-subtitle">Helping rural artisans reach global markets. Here is your management stats.</p>
+          <h1 className="welcome-title">Welcome Back, {(user.name || 'there').split(' ')[0]}!<br /><span>Your Workspace</span></h1>
+          <p className="page-subtitle">Review direct hire invitations and current product listings.</p>
         </div>
         <div className="ai-avatar">
           <div className="float" style={{ fontSize: 80 }}>👨🏽‍💻</div>
@@ -191,19 +191,19 @@ export default function Dashboard() {
 
       <div className="stats-grid">
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: '#f3f0ff', color: '#6c3fcf' }}><MdSchool /></div>
-          <div className="stat-value">120</div>
-          <div className="stat-label">Learning Credits</div>
+          <div className="stat-icon" style={{ background: '#f3f0ff', color: '#6c3fcf' }}><MdSell /></div>
+          <div className="stat-value">{allProducts.length}</div>
+          <div className="stat-label">Products Available</div>
         </div>
         <div className="card stat-card">
-          <div className="stat-icon" style={{ background: '#ecfdf5', color: '#10b981' }}><MdRocketLaunch /></div>
+          <div className="stat-icon" style={{ background: '#ecfdf5', color: '#10b981' }}><MdPeople /></div>
           <div className="stat-value">{invitations.length}</div>
           <div className="stat-label">Hiring Requests</div>
         </div>
         <div className="card stat-card">
           <div className="stat-icon" style={{ background: '#eff6ff', color: '#3b82f6' }}><MdSell /></div>
           <div className="stat-value">{acceptedTeam.length}</div>
-          <div className="stat-label">Active Clients</div>
+          <div className="stat-label">Accepted Invitations</div>
         </div>
       </div>
 
@@ -211,7 +211,7 @@ export default function Dashboard() {
         <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>My Job Invitations</h2>
         {invitations.length === 0 ? (
           <div className="card" style={{ padding: 32, textAlign: 'center', color: '#5a4f7a' }}>
-            No hiring requests yet. Make sure your profile bio stands out!
+            No direct hire invitations yet.
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 16 }}>
@@ -247,9 +247,9 @@ export default function Dashboard() {
       </div>
 
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Recommended Opportunities</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Recently Listed Products</h2>
         <Link to="/marketplace" className="btn btn-primary btn-sm">
-          Browse All
+          View Opportunities
         </Link>
       </div>
 
@@ -273,8 +273,8 @@ export default function Dashboard() {
               </div>
               <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>{product.title}</h3>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#10b981' }}>₹{product.profit_margin}/unit</div>
-                <button onClick={() => handleApply(product)} className="btn btn-ghost btn-sm">Apply</button>
+                <div style={{ fontSize: 13, color: '#9488b8' }}>{product.category || 'Category not set'}</div>
+                <button onClick={() => handleApply(product)} className="btn btn-ghost btn-sm">Message artisan</button>
               </div>
             </div>
           ))}

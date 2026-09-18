@@ -5,24 +5,24 @@ const FEATURES = [
   {
     icon: '🎤',
     title: 'Speak in Your Language',
-    desc: 'Describe your product in Hindi, Tamil, Bengali or any regional language. AI understands you.',
-    label: 'Multi-language AI',
+    desc: 'Speak or type your product description in your preferred language before reviewing the listing draft.',
+    label: 'Voice or text',
     color: '#6c3fcf',
     bg: '#f3f0ff',
   },
   {
     icon: '💡',
-    title: 'AI Market Intelligence',
-    desc: 'Get real-time market prices, demand forecasts, and profit margin estimates for your products.',
-    label: 'Market Analysis',
+    title: 'Editable Product Drafts',
+    desc: 'Turn a spoken or typed description into a listing draft that you can review and edit.',
+    label: 'Draft assistance',
     color: '#f59e0b',
     bg: '#fffbeb',
   },
   {
     icon: '📋',
     title: 'Auto Listing Generator',
-    desc: 'AI creates professional product titles, descriptions, and SEO-optimized tags instantly.',
-    label: 'Smart Listings',
+    desc: 'Create and manage product listings with your own title, description, tags, and price.',
+    label: 'Product listings',
     color: '#10b981',
     bg: '#ecfdf5',
   },
@@ -47,9 +47,9 @@ export default function Landing() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'white', fontWeight: 800, fontSize: 14,
             boxShadow: '0 4px 12px rgba(108,63,207,0.35)'
-          }}>RB</div>
+          }}>BB</div>
           <span style={{ fontWeight: 800, fontSize: 18, color: '#1a1333', letterSpacing: '-0.3px' }}>
-            Rural<span style={{ color: '#6c3fcf' }}>Bazaar</span>
+            Bharat<span style={{ color: '#6c3fcf' }}>Bazaar</span>
           </span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -67,11 +67,11 @@ export default function Landing() {
           <h1 style={{ fontSize: 52, fontWeight: 800, lineHeight: 1.1, letterSpacing: '-2px', marginBottom: 20 }}>
             Just speak —<br />
             <span style={{ background: 'linear-gradient(135deg, #6c3fcf, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              we handle the selling.
+              you stay in control.
             </span>
           </h1>
           <p style={{ fontSize: 18, color: '#5a4f7a', lineHeight: 1.6, marginBottom: 32, maxWidth: 520 }}>
-            Bharat Bazaar empowers rural artisans to list, price, and sell their handmade products using just their voice — in any regional language.
+            Bharat Bazaar helps artisans create and manage handmade-product listings from a spoken or typed description.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link to="/signup" className="btn btn-primary btn-lg">
@@ -82,7 +82,7 @@ export default function Landing() {
             </Link>
           </div>
           <p style={{ marginTop: 20, fontSize: 13, color: '#9488b8' }}>
-            ✅ No technical skills needed &nbsp;•&nbsp; ✅ Works in 10+ languages &nbsp;•&nbsp; ✅ Completely free
+            ✅ No technical skills needed &nbsp;•&nbsp; ✅ Review every listing before publishing
           </p>
         </div>
 
@@ -106,8 +106,8 @@ export default function Landing() {
             boxShadow: '0 4px 20px rgba(120,100,200,0.12)',
             border: '1px solid rgba(200,190,240,0.4)',
           }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#6c3fcf' }}>₹14.3L</div>
-            <div style={{ fontSize: 11, color: '#9488b8' }}>Revenue Generated</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#6c3fcf' }}>Your draft</div>
+            <div style={{ fontSize: 11, color: '#9488b8' }}>is always editable</div>
           </div>
         </div>
       </section>
@@ -132,13 +132,13 @@ export default function Landing() {
         {/* Bottom AI bar - from reference UI */}
         <div style={{ marginTop: 40 }}>
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 13, color: '#9488b8' }}>✨ Try a quick search</span>
+            <span style={{ fontSize: 13, color: '#9488b8' }}>✨ Start a product draft</span>
           </div>
           <div className="ai-bar" style={{ maxWidth: 680, margin: '0 auto' }}>
             <span style={{ fontSize: 18, color: '#9488b8' }}>+</span>
             <input className="ai-bar-input" placeholder='Example: "नीला हाथ से बुना दुपट्टा, 10 पीस" — describe your product' readOnly />
             <button className="ai-action-btn" onClick={() => window.location.href='/signup'}>
-              <MdMic /> Analyze
+              <MdMic /> Get started
             </button>
           </div>
           <div className="ai-bar-chips" style={{ justifyContent: 'center', marginTop: 12 }}>

@@ -79,13 +79,13 @@ export default function VoiceCreator() {
     setLoading(true)
     try {
       // Pass the reviewed draft, including any manual edits, to create the listing.
-      const { data } = await createProduct({
+      await createProduct({
         raw_description: description,
         quantity: result.quantity,
         language: user.language || 'hi',
         ai_data: result 
       })
-      navigate(`/listing/${data.id}`)
+      navigate('/dashboard')
     } catch (err) {
       console.error('Failed to create product', err)
     } finally {
@@ -243,7 +243,7 @@ export default function VoiceCreator() {
           }}>
             <div style={{ fontSize: 24 }}>💡</div>
             <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: 13, fontWeight: 700 }}>AI Tip</div>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>Listing tip</div>
               <div style={{ fontSize: 12, color: '#5a4f7a' }}>Mention the material and quantity to make your draft more useful.</div>
             </div>
           </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getProduct, deleteProduct } from '../api/product'
 import { getInterns, hireIntern, getInvitations, requestManager } from '../api/manager'
-import { MdDelete, MdCheckCircle, MdEdit, MdContentCopy, MdPersonAdd } from 'react-icons/md'
+import { MdDelete, MdCheckCircle, MdPersonAdd } from 'react-icons/md'
 
 export default function ListingPage() {
   const { id } = useParams()
@@ -99,9 +99,6 @@ export default function ListingPage() {
         </div>
         {user.role === 'artisan' && (
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-ghost" onClick={() => alert("Edit feature coming soon!")}>
-              <MdEdit /> Edit
-            </button>
             <button className="btn btn-ghost" onClick={handleDelete} style={{ color: '#ef4444' }}>
               <MdDelete /> Delete
             </button>
@@ -115,16 +112,9 @@ export default function ListingPage() {
              <div style={{ 
                 height: 300, background: '#f8f9fa', borderRadius: 16, marginBottom: 32,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 100,
-                border: '1px solid rgba(0,0,0,0.05)', position: 'relative'
+                 border: '1px solid rgba(0,0,0,0.05)'
               }}>
                 {product.category === 'handloom' ? '🧣' : product.category === 'pottery' ? '🏺' : '📦'}
-                <div style={{ 
-                  position: 'absolute', bottom: 20, right: 20, 
-                  background: 'white', padding: '10px 16px', borderRadius: 12,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: 13, fontWeight: 700
-                }}>
-                  AI Optimized Visual ✨
-                </div>
               </div>
 
               <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 16 }}>Product Description</h3>
@@ -141,12 +131,8 @@ export default function ListingPage() {
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24, display: 'flex', gap: 40 }}>
                 <div>
                   <div style={{ fontSize: 12, color: '#9488b8', marginBottom: 4 }}>Selling Price</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: '#6c3fcf' }}>₹{product.price}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, color: '#9488b8', marginBottom: 4 }}>Profit Margin</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: '#10b981' }}>₹{product.profit_margin}</div>
-                </div>
+                   <div style={{ fontSize: 24, fontWeight: 800, color: '#6c3fcf' }}>{product.price == null ? 'Not set' : `₹${product.price}`}</div>
+                 </div>
                 <div>
                   <div style={{ fontSize: 12, color: '#9488b8', marginBottom: 4 }}>Inventory</div>
                   <div style={{ fontSize: 24, fontWeight: 800 }}>{product.quantity} units</div>
@@ -179,14 +165,14 @@ export default function ListingPage() {
                       }}>
                         <div style={{ fontWeight: 700, color: '#2d3748', fontSize: 15 }}>{intern.name}</div>
                         <div style={{ fontSize: 12, color: '#6c3fcf', fontWeight: 600, margin: '4px 0 8px 0' }}>
-                          {intern.services || 'Digital Marketing'}
+                          {intern.services || 'Services not provided'}
                         </div>
                         <p style={{ fontSize: 12, color: '#5a4f7a', marginBottom: 12, lineHeight: 1.4 }}>
-                          {intern.bio || 'Passionate about helping rural artisans scale their business online.'}
+                          {intern.bio || 'Bio not provided'}
                         </p>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981' }}>
-                            {intern.pricing || 'Negotiable'}
+                            {intern.pricing || 'Pricing not provided'}
                           </span>
                           
                           {isInvited ? (
@@ -214,19 +200,9 @@ export default function ListingPage() {
                 <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'center', marginBottom: 12 }} onClick={handleCreateManagerRequest}>
                   <MdPersonAdd /> Post Manager Request
                 </button>
-                <div className="badge badge-amber" style={{ width: '100%', justifyContent: 'center', marginBottom: 16, padding: '8px' }}>
-                  ⭐ Grow Your Business
-                </div>
-                <p style={{ fontSize: 12, color: '#9488b8', fontStyle: 'italic' }}>
-                  "Hiring an intern manager helped me sell 40+ units in Mumbai last month!" — Savita, Handloom Artisan
-                </p>
               </div>
             </div>
           )}
-          
-          <button className="btn btn-ghost" style={{ width: '100%', marginTop: 24, justifyContent: 'center' }}>
-             <MdContentCopy /> Copy Listing Link
-          </button>
         </aside>
       </div>
     </div>
