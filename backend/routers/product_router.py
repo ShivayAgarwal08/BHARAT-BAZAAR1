@@ -22,21 +22,25 @@ async def create_product(
         analysis = await analyze_product_input(data.raw_description, data.language)
         ai = await generate_product_listing(analysis)
     
-    # Ensure tags is a string
-    tags_str = ai["tags"] if isinstance(ai["tags"], str) else ",".join(ai["tags"])
+    # Keep user-provided draft edits and avoid manufacturing unavailable values.
+    tags = ai.get("tags") or []
+    tags_str = tags if isinstance(tags, str) else ",".join(tags)
+    price = ai.get("price", ai.get("suggested_price"))
+    if price == "":
+        price = None
     
     product = models.Product(
         user_id=current_user.id,
         raw_description=data.raw_description,
-        title=ai["title"],
-        description=ai["description"],
-        price=ai.get("suggested_price", ai.get("price")),
-        min_price=ai["min_price"],
-        max_price=ai["max_price"],
-        profit_margin=ai["profit_margin"],
+        title=ai.get("title") or data.raw_description.strip()[:120] or "Untitled product",
+        description=ai.get("description") or data.raw_description,
+        price=price,
+        min_price=ai.get("min_price"),
+        max_price=ai.get("max_price"),
+        profit_margin=ai.get("profit_margin"),
         tags=tags_str,
-        category=ai["category"],
-        material=ai["material"],
+        category=ai.get("category") or "",
+        material=ai.get("material") or "",
         quantity=data.quantity,
         language=data.language,
     )

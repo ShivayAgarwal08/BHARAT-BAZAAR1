@@ -125,10 +125,10 @@ class ProductOut(BaseModel):
     title: str
     description: str
     raw_description: str
-    price: float
-    min_price: float
-    max_price: float
-    profit_margin: float
+    price: Optional[float] = None
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    profit_margin: Optional[float] = None
     tags: str
     category: str
     material: str
@@ -144,24 +144,25 @@ class ProductOut(BaseModel):
 
 # AI
 class AIAnalyzeRequest(BaseModel):
-    description: str
+    description: str = Field(min_length=1)
     language: str = "en"
     quantity: int = 1
 
 class AIAnalyzeResponse(BaseModel):
     product_name: str
-    category: str
-    material: str
+    category: Optional[str] = None
+    material: Optional[str] = None
     quantity: int
-    min_price: float
-    max_price: float
-    suggested_price: float
-    profit_margin: float
-    greeting: str
+    min_price: Optional[float] = None
+    max_price: Optional[float] = None
+    suggested_price: Optional[float] = None
+    profit_margin: Optional[float] = None
+    greeting: Optional[str] = None
     title: str
     description: str
     tags: List[str]
     language: str
+    source: Literal["ai", "basic_draft"]
 
 class MarketEstimationRequest(BaseModel):
     product_name: str

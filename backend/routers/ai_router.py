@@ -19,10 +19,11 @@ async def generate_listing(data: schemas.AIAnalyzeRequest):
     analysis = await analyze_product_input(data.description, data.language)
     result = await generate_product_listing(analysis)
     return {
+        "source": result["source"],
         "title": result["title"],
         "description": result["description"],
         "tags": result["tags"],
-        "suggested_price": result["suggested_price"],
+        "suggested_price": result.get("suggested_price"),
     }
 
 
@@ -31,6 +32,8 @@ async def market_estimation(data: schemas.MarketEstimationRequest):
     # For standalone market estimate, we use the analysis function with a descriptive slug
     dummy_desc = f"A {data.category} product made of standard materials."
     result = await analyze_product_input(dummy_desc)
+    if result["source"] != "ai":
+        raise HTTPException(status_code=503, detail="AI market estimation is currently unavailable")
     return {
         "min_price": float(result["min_price"]),
         "max_price": float(result["max_price"]),

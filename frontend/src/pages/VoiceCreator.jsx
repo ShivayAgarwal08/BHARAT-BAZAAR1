@@ -59,13 +59,13 @@ export default function VoiceCreator() {
     if (!description.trim()) return
     setAnalyzing(true)
     try {
-      // Use our backend API which connects to Google Gemini
+      // The backend returns either an AI draft or an honest local basic draft.
       const response = await analyzeProduct({
         description: description,
         language: user.language || 'hi'
       });
       
-      setResult(response.data);
+      setResult({ ...response.data, price: response.data.suggested_price ?? '' });
       setStep(2);
     } catch (err) {
       console.error('Backend AI Analysis failed:', err);
@@ -78,12 +78,11 @@ export default function VoiceCreator() {
   const handleConfirmListing = async () => {
     setLoading(true)
     try {
-      // Pass the AI generated data to the backend to create the full product
+      // Pass the reviewed draft, including any manual edits, to create the listing.
       const { data } = await createProduct({
         raw_description: description,
         quantity: result.quantity,
         language: user.language || 'hi',
-        // Backend now accepts pre-analyzed AI data
         ai_data: result 
       })
       navigate(`/listing/${data.id}`)
@@ -97,11 +96,11 @@ export default function VoiceCreator() {
   return (
     <div className="animate-in" style={{ maxWidth: 800, margin: '0 auto' }}>
       <div className="page-header">
-        <h1 className="page-title">{step === 1 ? 'Describe Your Product' : 'AI Analysis Result'}</h1>
+        <h1 className="page-title">{step === 1 ? 'Describe Your Product' : 'Review Your Listing Draft'}</h1>
         <p className="page-subtitle">
           {step === 1 
             ? 'Speak or type about your product in your local language.' 
-            : 'AI has analyzed your product. Review the details below.'}
+            : 'Review and edit the draft before creating your listing.'}
         </p>
       </div>
 
@@ -171,7 +170,7 @@ export default function VoiceCreator() {
               onClick={handleAnalyze}
               disabled={analyzing || !description.trim()}
             >
-              {analyzing ? 'Analyzing with AI...' : <><MdAutoAwesome /> Analyze with AI</>}
+              {analyzing ? 'Preparing your draft...' : <><MdAutoAwesome /> Create Listing Draft</>}
             </button>
           </div>
         </div>
@@ -186,45 +185,37 @@ export default function VoiceCreator() {
                 {result.category === 'handloom' ? '🧣' : '📦'}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <h3 style={{ fontSize: 22, fontWeight: 800 }}>{result.product_name}</h3>
-                  <span className="tag">{result.category}</span>
-                </div>
-                <p style={{ color: '#5a4f7a', lineHeight: 1.6, marginBottom: 16 }}>{result.greeting}</p>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                  <div>
-                    <div style={{ fontSize: 13, color: '#9488b8', marginBottom: 4 }}>Market Value</div>
-                    <div style={{ fontSize: 20, fontWeight: 800 }}>₹{result.min_price} - ₹{result.max_price}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, color: '#9488b8', marginBottom: 4 }}>Profit Margin (Est.)</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981' }}>₹{result.profit_margin}</div>
-                  </div>
-                </div>
+                <span className="tag">{result.source === 'ai' ? 'AI-generated draft' : 'Basic draft from your description'}</span>
+                {result.source === 'basic_draft' && (
+                  <p style={{ color: '#5a4f7a', lineHeight: 1.6, margin: '16px 0 0' }}>
+                    AI enhancement is currently unavailable. You can still edit and create this listing.
+                  </p>
+                )}
               </div>
             </div>
           </div>
 
           <div className="card" style={{ padding: 32, marginBottom: 24 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>AI Generated Listing</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{result.source === 'ai' ? 'AI-generated draft' : 'Basic draft from your description'}</h3>
+            <div className="form-group">
+              <label className="form-label">Your Spoken or Typed Description</label>
+              <textarea className="input" rows="3" value={description} readOnly />
+            </div>
             <div className="form-group">
               <label className="form-label">Product Title</label>
-              <input className="input" value={result.title} readOnly />
+              <input className="input" value={result.title} onChange={(e) => setResult({ ...result, title: e.target.value, product_name: e.target.value })} />
             </div>
             <div className="form-group">
               <label className="form-label">Product Description</label>
-              <textarea className="input" rows="4" value={result.description} readOnly />
+              <textarea className="input" rows="4" value={result.description} onChange={(e) => setResult({ ...result, description: e.target.value })} />
             </div>
             <div className="form-group">
-              <label className="form-label">Suggested Price</label>
-              <input className="input" value={`₹${result.suggested_price}`} readOnly />
+              <label className="form-label">Price</label>
+              <input className="input" type="number" min="0" step="0.01" placeholder="Enter your price" value={result.price} onChange={(e) => setResult({ ...result, price: e.target.value === '' ? '' : Number(e.target.value) })} />
             </div>
-            <div>
+            <div className="form-group">
               <label className="form-label">Tags</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {(Array.isArray(result.tags) ? result.tags : []).map(tag => <span key={tag} className="tag">{tag}</span>)}
-              </div>
+              <input className="input" value={(Array.isArray(result.tags) ? result.tags : []).join(', ')} onChange={(e) => setResult({ ...result, tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean) })} placeholder="Separate tags with commas" />
             </div>
           </div>
 
@@ -253,7 +244,7 @@ export default function VoiceCreator() {
             <div style={{ fontSize: 24 }}>💡</div>
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: 13, fontWeight: 700 }}>AI Tip</div>
-              <div style={{ fontSize: 12, color: '#5a4f7a' }}>Mention the material and quantity for better price estimation.</div>
+              <div style={{ fontSize: 12, color: '#5a4f7a' }}>Mention the material and quantity to make your draft more useful.</div>
             </div>
           </div>
         </div>

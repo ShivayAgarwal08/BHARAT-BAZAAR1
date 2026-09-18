@@ -1,40 +1,87 @@
-import os
 import json
-import random
-import google.generativeai as genai
-from typing import Dict, Any, List
+import os
+import re
+from typing import Any, Dict, List
 
-# Setup API Key (to be provided by user or set in env)
+import google.generativeai as genai
+
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# Fallback simulation logic (if no API key)
-CATEGORIES = {
-    "handloom": ["silk", "cotton", "linen", "wool"],
-    "pottery": ["clay", "terracotta", "ceramic"],
-    "jewelry": ["silver", "beads", "terracotta-jewelry", "brass"],
-    "food": ["organic", "homemade", "traditional", "spices"]
+
+MODELS_TO_TRY = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-pro-latest", "gemini-2.0-flash"]
+ENGLISH_STOP_WORDS = {
+    "a", "an", "and", "are", "for", "have", "i", "in", "is", "it", "of", "the", "to", "with",
 }
 
-GREETINGS = {
-    "hi": "नमस्ते! आपका प्रोडक्ट बहुत ही शानदार लग रहा है।",
-    "en": "Hello! Your product looks amazing and high-quality."
-}
+
+def _clean_transcript(description: str) -> str:
+    return " ".join(description.split())
+
+
+def _draft_title(transcript: str) -> str:
+    words = transcript.split()
+    return " ".join(words[:12])[:120]
+
+
+def _draft_tags(transcript: str) -> List[str]:
+    words = re.findall(r"[^\W_]+", transcript.lower(), flags=re.UNICODE)
+    tags = []
+    for word in words:
+        if word in ENGLISH_STOP_WORDS or word.isdigit() or len(word) < 2 or word in tags:
+            continue
+        tags.append(word)
+        if len(tags) == 5:
+            break
+    return tags
+
+
+def _extract_quantity(transcript: str) -> int:
+    match = re.search(r"(?<!\d)([0-9\u0966-\u096f]{1,5})(?!\d)", transcript)
+    if not match:
+        return 1
+    devanagari_digits = str.maketrans("०१२३४५६७८९", "0123456789")
+    return max(1, int(match.group(1).translate(devanagari_digits)))
+
+
+async def create_basic_draft(description: str, language: str = "hi") -> Dict[str, Any]:
+    """Create a deterministic, transcript-only listing draft with no financial claims."""
+    transcript = _clean_transcript(description)
+    title = _draft_title(transcript)
+    return {
+        "source": "basic_draft",
+        "product_name": title,
+        "category": None,
+        "material": None,
+        "min_price": None,
+        "max_price": None,
+        "suggested_price": None,
+        "profit_margin": None,
+        "quantity": _extract_quantity(transcript),
+        "tags": _draft_tags(transcript),
+        "greeting": None,
+        "title": title,
+        "description": transcript,
+        "language": language,
+    }
+
+
+def _parse_json_response(raw_text: str) -> Dict[str, Any]:
+    raw_text = raw_text.strip()
+    if "```json" in raw_text:
+        raw_text = raw_text.split("```json", 1)[1].split("```", 1)[0].strip()
+    return json.loads(raw_text)
+
 
 async def analyze_product_input(description: str, language: str = "hi") -> Dict[str, Any]:
-    """
-    Analyzes product description using Gemini Pro or fallback logic.
-    Extracts name, category, material, and estimates market price.
-    """
+    """Use Gemini when available; otherwise return an explicitly labeled transcript-only draft."""
     if not GEMINI_API_KEY:
-        return await simulate_analysis(description, language)
+        return await create_basic_draft(description, language)
 
-    # List of models to try in order of preference
-    models_to_try = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest', 'gemini-2.0-flash']
-    
     last_error = None
-    for model_name in models_to_try:
+    for model_name in MODELS_TO_TRY:
         try:
             model = genai.GenerativeModel(model_name)
             prompt = f"""
@@ -43,131 +90,40 @@ async def analyze_product_input(description: str, language: str = "hi") -> Dict[
             Language of description: {language}
 
             Respond in strictly JSON format with these fields:
-            - product_name: (Short specific name)
-            - category: (One of: handloom, pottery, jewelry, food, other)
-            - material: (Primary material)
-            - min_price: (Estimated minimum market price in INR)
-            - max_price: (Estimated maximum market price in INR)
-            - quantity: (Extracted quantity, default 1)
-            - tags: (List of 5 SEO tags)
-            - greeting: (A warm conversational greeting for the artisan in {language})
-            - title: (Catchy, SEO-friendly marketing title)
-            - description: (Story-based marketing description highlighting craftsmanship)
-            
-            Example JSON:
-            {{
-                "product_name": "Blue Silk Dupatta",
-                "category": "handloom",
-                "material": "Silk",
-                "min_price": 500,
-                "max_price": 800,
-                "quantity": 5,
-                "tags": ["handmade", "silk", "handloom", "ethnic", "traditional"],
-                "greeting": "नमस्ते! आपके पास बहुत सुंदर रेशमी दुपट्टा है।",
-                "title": "Beautiful Handmade Blue Silk Dupatta",
-                "description": "A stunning handcrafted blue silk dupatta perfect for any occasion."
-            }}
+            - product_name: short specific name
+            - category: one of handloom, pottery, jewelry, food, other
+            - material: primary material
+            - min_price: estimated minimum market price in INR
+            - max_price: estimated maximum market price in INR
+            - quantity: extracted quantity, default 1
+            - tags: list of SEO tags derived from the product
+            - greeting: a warm conversational greeting for the artisan in {language}
+            - title: a specific listing title
+            - description: a listing description based on the artisan's product
             """
-            response = model.generate_content(prompt)
-            # Clean up possible markdown in response
-            raw_text = response.text.strip()
-            if "```json" in raw_text:
-                raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-            
-            data = json.loads(raw_text)
-            
-            # Calculate suggested price and profit margin
-            avg_price = (data["min_price"] + data["max_price"]) / 2
-            data["suggested_price"] = int(avg_price * 1.1)
-            data["profit_margin"] = int(data["suggested_price"] * 0.4)
-            data["language"] = language
-            
-            return data
-        except Exception as e:
-            last_error = e
-            print(f"Attempt with {model_name} failed: {e}")
-            continue # Try next model
-            
-    print(f"All Gemini models failed. Last error: {last_error}")
-    return await simulate_analysis(description, language)
+            data = _parse_json_response(model.generate_content(prompt).text)
+            min_price = float(data["min_price"])
+            max_price = float(data["max_price"])
+            suggested_price = int(((min_price + max_price) / 2) * 1.1)
+            return {
+                **data,
+                "source": "ai",
+                "min_price": min_price,
+                "max_price": max_price,
+                "suggested_price": suggested_price,
+                "profit_margin": int(suggested_price * 0.4),
+                "quantity": int(data.get("quantity") or 1),
+                "tags": data.get("tags") or [],
+                "language": language,
+            }
+        except Exception as error:
+            last_error = error
+            print(f"Gemini attempt with {model_name} failed: {error}")
+
+    print(f"All Gemini models failed; returning a basic draft. Last error: {last_error}")
+    return await create_basic_draft(description, language)
+
 
 async def generate_product_listing(analysis: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Generates a professional marketing title and description.
-    """
-    if not GEMINI_API_KEY:
-        return await simulate_listing_gen(analysis)
-
-    models_to_try = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest', 'gemini-2.0-flash']
-    
-    last_error = None
-    for model_name in models_to_try:
-        try:
-            model = genai.GenerativeModel(model_name)
-            prompt = f"""
-            Generate a professional e-commerce listing for this product:
-            Name: {analysis['product_name']}
-            Category: {analysis['category']}
-            Material: {analysis['material']}
-            Tags: {', '.join(analysis['tags'])}
-
-            Respond in JSON:
-            - title: (Catchy, SEO-friendly title)
-            - description: (Story-based description highlighting the rural craftsmanship and quality)
-            """
-            response = model.generate_content(prompt)
-            raw_text = response.text.strip()
-            if "```json" in raw_text:
-                raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-            
-            listing = json.loads(raw_text)
-            return {**analysis, **listing}
-        except Exception as e:
-            last_error = e
-            print(f"Attempt with {model_name} failed: {e}")
-            continue
-            
-    print(f"All Gemini models failed in listing. Last error: {last_error}")
-    return await simulate_listing_gen(analysis)
-
-# --- Fallback / Simulation Functions ---
-
-async def simulate_analysis(description: str, language: str = "hi") -> Dict[str, Any]:
-    # (Existing simulation logic simplified or reused)
-    category = "other"
-    material = "natural"
-    low_desc = description.lower()
-    
-    if any(k in low_desc for k in ["दुपट्टा", "dupatta", "woven", "loom", "silk", "cotton"]):
-        category = "handloom"
-        material = "silk" if "silk" in low_desc or "रेशम" in low_desc else "cotton"
-    elif any(k in low_desc for k in ["pot", "clay", "धड़ा", "मिट्टी"]):
-        category = "pottery"
-        material = "clay"
-    
-    min_p = random.randint(200, 500)
-    max_p = min_p + random.randint(200, 400)
-    suggested = int(max_p * 0.9)
-    
-    return {
-        "product_name": "Handmade Product",
-        "category": category,
-        "material": material,
-        "min_price": min_p,
-        "max_price": max_p,
-        "suggested_price": suggested,
-        "profit_margin": int(suggested * 0.35),
-        "quantity": 1,
-        "tags": ["handmade", "rural-business", category, "local-craft"],
-        "greeting": GREETINGS.get(language, GREETINGS["en"]),
-        "title": "Authentic Rural Craft",
-        "description": f"Handcrafted {category} item.",
-        "language": language
-    }
-
-async def simulate_listing_gen(analysis: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        **analysis,
-        "title": f"Authentic {analysis['material'].title()} {analysis['category'].title()}",
-        "description": f"This beautiful {analysis['category']} item is handcrafted by local artisans using traditional {analysis['material']} techniques. Perfect for those who value authenticity and social impact."
-    }
+    """Analysis already contains the listing draft; do not generate a simulated second draft."""
+    return analysis
