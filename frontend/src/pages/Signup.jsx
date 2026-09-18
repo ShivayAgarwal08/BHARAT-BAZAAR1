@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signup } from '../api/auth'
+import { requestAssistedRegistration } from '../api/assistedRegistration'
 import { MdPerson, MdEmail, MdLock, MdLanguage, MdArrowForward, MdPlace } from 'react-icons/md'
 
 const LANGUAGES = [
@@ -14,12 +15,22 @@ const LANGUAGES = [
 export default function Signup() {
   const navigate = useNavigate()
   const [roleMode, setRoleMode] = useState('artisan') // artisan | intern
+  const [artisanSignupMode, setArtisanSignupMode] = useState('self')
   const [form, setForm] = useState({ 
     name: '', email: '', password: '', language: 'hi', location: '',
     phone_number: '', bio: '', services: '', pricing: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [assistedForm, setAssistedForm] = useState({
+    full_name: '',
+    phone_number: '',
+    preferred_language: 'hi',
+    preferred_callback_time: '',
+  })
+  const [assistedLoading, setAssistedLoading] = useState(false)
+  const [assistedError, setAssistedError] = useState('')
+  const [assistedSuccess, setAssistedSuccess] = useState(false)
 
   // Clear error when switching tabs
   useEffect(() => setError(''), [roleMode])
@@ -38,6 +49,21 @@ export default function Signup() {
       setError(err.response?.data?.detail || 'Signup failed. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleAssistedSubmit = async (e) => {
+    e.preventDefault()
+    setAssistedLoading(true)
+    setAssistedError('')
+    try {
+      await requestAssistedRegistration(assistedForm)
+      setAssistedSuccess(true)
+    } catch (err) {
+      const detail = err.response?.data?.detail
+      setAssistedError(typeof detail === 'string' ? detail : 'Could not submit your request. Please try again.')
+    } finally {
+      setAssistedLoading(false)
     }
   }
 
@@ -254,9 +280,49 @@ export default function Signup() {
                 <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2d3748', margin: 0 }}>Artisan Signup</h1>
                 <p style={{ color: '#5a4f7a', fontSize: 13, marginTop: 4 }}>Just speak — we handle the selling.</p>
               </div>
-              <form onSubmit={(e) => handleSubmit(e, 'artisan')} style={{ flex: 1 }}>
-                {renderFormFields('artisan')}
-              </form>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+                <button type="button" className={artisanSignupMode === 'self' ? 'btn btn-primary' : 'btn btn-ghost'} onClick={() => setArtisanSignupMode('self')} style={{ justifyContent: 'center', padding: 10 }}>
+                  Register Myself
+                </button>
+                <button type="button" className={artisanSignupMode === 'assisted' ? 'btn btn-primary' : 'btn btn-ghost'} onClick={() => setArtisanSignupMode('assisted')} style={{ justifyContent: 'center', padding: 10 }}>
+                  Help Me Register
+                </button>
+              </div>
+              {artisanSignupMode === 'self' ? (
+                <form onSubmit={(e) => handleSubmit(e, 'artisan')} style={{ flex: 1 }}>
+                  {renderFormFields('artisan')}
+                </form>
+              ) : assistedSuccess ? (
+                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: 18, color: '#065f46', lineHeight: 1.5 }}>
+                  Your request has been received. The Bharat Bazaar team will contact you and help create your account.
+                </div>
+              ) : (
+                <form onSubmit={handleAssistedSubmit} style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13, color: '#5a4f7a', margin: '0 0 16px' }}>Share your contact details and our team will help you register.</p>
+                  <div className="form-group">
+                    <label className="form-label">Full Name</label>
+                    <input className="input" value={assistedForm.full_name} onChange={e => setAssistedForm({ ...assistedForm, full_name: e.target.value })} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Phone Number</label>
+                    <input className="input" type="tel" value={assistedForm.phone_number} onChange={e => setAssistedForm({ ...assistedForm, phone_number: e.target.value })} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Preferred Language</label>
+                    <select className="input" value={assistedForm.preferred_language} onChange={e => setAssistedForm({ ...assistedForm, preferred_language: e.target.value })}>
+                      {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Preferred Callback Time</label>
+                    <input className="input" placeholder="For example: Weekdays, 3-5 PM" value={assistedForm.preferred_callback_time} onChange={e => setAssistedForm({ ...assistedForm, preferred_callback_time: e.target.value })} required />
+                  </div>
+                  {assistedError && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#ef4444' }}>{assistedError}</div>}
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: 14, fontSize: 16, borderRadius: 12 }} disabled={assistedLoading}>
+                    {assistedLoading ? 'Sending request...' : 'Request Registration Help'}
+                  </button>
+                </form>
+              )}
               <div style={{ textAlign: 'center', marginTop: 16, fontSize: 14, color: '#5a4f7a' }}>
                 Already registered? <Link to="/login" style={{ color: '#6c3fcf', fontWeight: 600, textDecoration: 'none' }}>Sign in</Link>
               </div>

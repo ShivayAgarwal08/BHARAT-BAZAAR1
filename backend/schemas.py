@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr
+import re
+
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Dict, Any, Literal
 from pydantic import Field
 from datetime import datetime
@@ -52,6 +54,62 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserOut
+
+
+class AssistedRegistrationRequestCreate(BaseModel):
+    full_name: str = Field(min_length=1, max_length=120)
+    phone_number: str = Field(min_length=8, max_length=20)
+    preferred_language: str = Field(min_length=1, max_length=50)
+    preferred_callback_time: str = Field(min_length=1, max_length=100)
+
+    @field_validator("full_name", "preferred_language", "preferred_callback_time")
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("This field cannot be empty")
+        return value
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone_number(cls, value: str) -> str:
+        value = value.strip()
+        if not re.fullmatch(r"\+?[0-9][0-9\s-]{6,18}[0-9]", value):
+            raise ValueError("Enter a valid phone number")
+        if not 8 <= len(re.sub(r"\D", "", value)) <= 15:
+            raise ValueError("Enter a valid phone number")
+        return value
+
+
+class AssistedRegistrationRequestUpdate(BaseModel):
+    status: Optional[Literal["pending", "contacted", "completed", "cancelled"]] = None
+    notes: Optional[str] = Field(default=None, max_length=2000)
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, value: Optional[str]) -> Optional[str]:
+        return value.strip() if value is not None else value
+
+
+class AssistedRegistrationRequestOut(BaseModel):
+    id: int
+    full_name: str
+    phone_number: str
+    preferred_language: str
+    preferred_callback_time: str
+    status: Literal["pending", "contacted", "completed", "cancelled"]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AssistedRegistrationRequestCreated(BaseModel):
+    id: int
+    status: Literal["pending", "contacted", "completed", "cancelled"]
+    created_at: datetime
 
 
 # Product

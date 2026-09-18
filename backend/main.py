@@ -43,6 +43,7 @@ from routers.ai_router import router as ai_router
 from routers.manager_router import router as manager_router
 from routers.image_router import router as image_router
 from routers.impact_router import router as impact_router
+from routers.assisted_registration_router import router as assisted_registration_router
 
 app.include_router(auth_router)
 app.include_router(product_router)
@@ -50,6 +51,7 @@ app.include_router(ai_router)
 app.include_router(manager_router)
 app.include_router(image_router)
 app.include_router(impact_router)
+app.include_router(assisted_registration_router)
 
 
 @app.get("/health")

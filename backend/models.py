@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Text, Boolean
+from sqlalchemy import CheckConstraint, Column, Integer, String, Float, ForeignKey, DateTime, Text, Boolean
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -110,3 +110,23 @@ class InternAlert(Base):
     intern = relationship("User", foreign_keys=[intern_id], back_populates="sent_alerts")
     artisan = relationship("User", foreign_keys=[artisan_id], back_populates="received_alerts")
     product = relationship("Product")
+
+
+class AssistedRegistrationRequest(Base):
+    __tablename__ = "assisted_registration_requests"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'contacted', 'completed', 'cancelled')",
+            name="ck_assisted_registration_request_status",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String, nullable=False)
+    phone_number = Column(String, nullable=False)
+    preferred_language = Column(String, nullable=False)
+    preferred_callback_time = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="pending")
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
