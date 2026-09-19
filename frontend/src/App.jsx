@@ -19,6 +19,10 @@ const BusinessHelp = lazy(() => import('./pages/BusinessHelp'))
 const MyPilot = lazy(() => import('./pages/MyPilot'))
 const GrowthRequests = lazy(() => import('./pages/AdminGrowth').then((module) => ({ default: module.GrowthRequests })))
 const SponsoredPilots = lazy(() => import('./pages/AdminGrowth').then((module) => ({ default: module.SponsoredPilots })))
+const Profile = lazy(() => import('./pages/Profile'))
+const Help = lazy(() => import('./pages/Help'))
+const Portfolio = lazy(() => import('./pages/Portfolio'))
+const AdminOperations = lazy(() => import('./pages/AdminOperations'))
 
 function getStoredUser() {
   try { return JSON.parse(localStorage.getItem('vl_user') || '{}') } catch { return {} }
@@ -69,8 +73,14 @@ export default function App() {
           <Route path="/business-help" element={<UserRoute><AppLayout><BusinessHelp /></AppLayout></UserRoute>} />
           <Route path="/my-manager" element={<UserRoute><AppLayout><MyPilot /></AppLayout></UserRoute>} />
           <Route path="/my-artisan" element={<UserRoute><AppLayout><MyPilot /></AppLayout></UserRoute>} />
+          <Route path="/profile" element={<UserRoute><AppLayout><Profile /></AppLayout></UserRoute>} />
+          <Route path="/help" element={<UserRoute><AppLayout><Help /></AppLayout></UserRoute>} />
+          <Route path="/portfolio" element={<UserRoute><AppLayout><Portfolio /></AppLayout></UserRoute>} />
           <Route path="/admin/growth-requests" element={<AdminRoute><AdminLayout><GrowthRequests /></AdminLayout></AdminRoute>} />
           <Route path="/admin/sponsored-pilots" element={<AdminRoute><AdminLayout><SponsoredPilots /></AdminLayout></AdminRoute>} />
+          <Route path="/admin/paid-engagements" element={<AdminRoute><AdminLayout><AdminOperations kind="paid" /></AdminLayout></AdminRoute>} />
+          <Route path="/admin/payments" element={<AdminRoute><AdminLayout><AdminOperations kind="payments" /></AdminLayout></AdminRoute>} />
+          <Route path="/admin/issues" element={<AdminRoute><AdminLayout><AdminOperations kind="issues" /></AdminLayout></AdminRoute>} />
           <Route path="/listing/:id" element={
             <UserRoute><AppLayout><ListingPage /></AppLayout></UserRoute>
           } />

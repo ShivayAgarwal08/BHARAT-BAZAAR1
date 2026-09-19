@@ -63,6 +63,12 @@ def get_admin_summary(
         "open_manager_requests": db.query(models.ManagerRequest).filter(
             models.ManagerRequest.status == "open"
         ).count(),
+        "pending_growth_requests": db.query(models.GrowthRequest).filter(models.GrowthRequest.status == "pending").count(),
+        "active_sponsored_pilots": db.query(models.PilotEngagement).filter(models.PilotEngagement.status == "active").count(),
+        "completed_sponsored_pilots": db.query(models.PilotEngagement).filter(models.PilotEngagement.status == "completed").count(),
+        "active_paid_engagements": db.query(models.PaidEngagement).filter(models.PaidEngagement.status == "active").count(),
+        "open_issues": db.query(models.EngagementIssue).filter(models.EngagementIssue.status.in_(("open", "reviewing"))).count(),
+        "pending_payments": db.query(models.PaymentRecord).filter(models.PaymentRecord.status.in_(("declared", "student_confirmed"))).count(),
     }
 
 

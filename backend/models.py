@@ -165,3 +165,136 @@ class PilotEngagement(Base):
     request = relationship("GrowthRequest")
     artisan = relationship("User", foreign_keys=[artisan_id])
     student = relationship("User", foreign_keys=[student_id])
+
+
+# Operational records are intentionally separate from the original matching
+# tables.  They let a sponsored pilot grow into a documented, participant-only
+# workflow without changing historic requests or products.
+class PilotTask(Base):
+    __tablename__ = "pilot_tasks"
+    id = Column(Integer, primary_key=True)
+    pilot_id = Column(Integer, ForeignKey("pilot_engagements.id"), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    assigned_student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    due_date = Column(DateTime, nullable=True)
+    status = Column(String, nullable=False, default="pending")
+    student_update = Column(Text, default="")
+    artisan_feedback = Column(Text, default="")
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class PilotDiscovery(Base):
+    __tablename__ = "pilot_discoveries"
+    id = Column(Integer, primary_key=True)
+    pilot_id = Column(Integer, ForeignKey("pilot_engagements.id"), nullable=False, unique=True)
+    summary = Column(Text, nullable=False)
+    current_challenges = Column(Text, default="")
+    priorities = Column(Text, default="")
+    proposed_deliverables = Column(Text, default="")
+    status = Column(String, nullable=False, default="submitted")
+    admin_notes = Column(Text, default="")
+    reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class PilotMetric(Base):
+    __tablename__ = "pilot_metrics"
+    id = Column(Integer, primary_key=True)
+    pilot_id = Column(Integer, ForeignKey("pilot_engagements.id"), nullable=False, index=True)
+    stage = Column(String, nullable=False)  # before | current | final
+    metric_name = Column(String, nullable=False)
+    metric_value = Column(Float, nullable=True)
+    notes = Column(Text, default="")
+    recorded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class PaidEngagement(Base):
+    __tablename__ = "paid_engagements"
+    id = Column(Integer, primary_key=True)
+    artisan_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    pilot_id = Column(Integer, ForeignKey("pilot_engagements.id"), nullable=True)
+    source = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    agreed_rate = Column(Float, nullable=False)
+    rate_type = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="proposed")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class EngagementAgreement(Base):
+    __tablename__ = "engagement_agreements"
+    id = Column(Integer, primary_key=True)
+    paid_engagement_id = Column(Integer, ForeignKey("paid_engagements.id"), nullable=False, unique=True)
+    deliverables = Column(Text, nullable=False)
+    growth_targets = Column(Text, default="")
+    artisan_accepted_at = Column(DateTime, nullable=True)
+    student_accepted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class PaidEngagementTask(Base):
+    __tablename__ = "paid_engagement_tasks"
+    id = Column(Integer, primary_key=True)
+    paid_engagement_id = Column(Integer, ForeignKey("paid_engagements.id"), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, default="")
+    due_date = Column(DateTime, nullable=True)
+    status = Column(String, nullable=False, default="pending")
+    student_update = Column(Text, default="")
+    artisan_feedback = Column(Text, default="")
+    completed_at = Column(DateTime, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class PaymentRecord(Base):
+    __tablename__ = "payment_records"
+    id = Column(Integer, primary_key=True)
+    paid_engagement_id = Column(Integer, ForeignKey("paid_engagements.id"), nullable=False, index=True)
+    amount = Column(Float, nullable=False)
+    method = Column(String, nullable=False)
+    reference_note = Column(Text, default="")
+    status = Column(String, nullable=False, default="declared")
+    declared_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    student_confirmed_at = Column(DateTime, nullable=True)
+    verified_at = Column(DateTime, nullable=True)
+
+
+class EngagementReview(Base):
+    __tablename__ = "engagement_reviews"
+    __table_args__ = (CheckConstraint("rating >= 1 AND rating <= 5", name="ck_engagement_review_rating"),)
+    id = Column(Integer, primary_key=True)
+    pilot_id = Column(Integer, ForeignKey("pilot_engagements.id"), nullable=True)
+    paid_engagement_id = Column(Integer, ForeignKey("paid_engagements.id"), nullable=True)
+    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    reviewee_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class EngagementIssue(Base):
+    __tablename__ = "engagement_issues"
+    id = Column(Integer, primary_key=True)
+    pilot_id = Column(Integer, ForeignKey("pilot_engagements.id"), nullable=True)
+    paid_engagement_id = Column(Integer, ForeignKey("paid_engagements.id"), nullable=True)
+    reporter_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    category = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    status = Column(String, nullable=False, default="open")
+    admin_notes = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

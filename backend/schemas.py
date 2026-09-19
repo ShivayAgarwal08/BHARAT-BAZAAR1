@@ -62,6 +62,12 @@ class AdminSummaryOut(BaseModel):
     pending_assisted_registrations: int
     total_products: int
     open_manager_requests: int
+    pending_growth_requests: int = 0
+    active_sponsored_pilots: int = 0
+    completed_sponsored_pilots: int = 0
+    active_paid_engagements: int = 0
+    open_issues: int = 0
+    pending_payments: int = 0
 
 
 class AdminArtisanOut(BaseModel):
@@ -340,3 +346,96 @@ class InternAlertOut(BaseModel):
     artisan: UserOut
     class Config:
         from_attributes = True
+
+
+# Operations: shared, deliberately small payloads for the sponsored-pilot and
+# post-pilot workflows. Dates are optional because real engagements can begin
+# only after the participants agree on a practical schedule.
+class ProfileUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    phone_number: str = Field(default="", max_length=20)
+    location: str = Field(default="", max_length=200)
+    language: str = Field(default="en", max_length=50)
+    bio: str = Field(default="", max_length=2000)
+    services: str = Field(default="", max_length=1000)
+    pricing: str = Field(default="", max_length=200)
+
+class PilotTaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=4000)
+    due_date: Optional[datetime] = None
+class TaskUpdate(BaseModel):
+    status: Optional[Literal["pending", "in_progress", "submitted", "completed", "cancelled"]] = None
+    student_update: Optional[str] = Field(default=None, max_length=4000)
+    artisan_feedback: Optional[str] = Field(default=None, max_length=4000)
+class TaskOut(BaseModel):
+    id: int; title: str; description: str; due_date: Optional[datetime]; status: str; student_update: str; artisan_feedback: str; completed_at: Optional[datetime]; created_at: datetime
+    class Config: from_attributes = True
+
+class DiscoveryCreate(BaseModel):
+    summary: str = Field(min_length=1, max_length=5000)
+    current_challenges: str = Field(default="", max_length=5000)
+    priorities: str = Field(default="", max_length=5000)
+    proposed_deliverables: str = Field(default="", max_length=5000)
+class DiscoveryReview(BaseModel):
+    status: Literal["approved", "changes_requested"]
+    admin_notes: str = Field(default="", max_length=4000)
+class DiscoveryOut(BaseModel):
+    id: int; pilot_id: int; summary: str; current_challenges: str; priorities: str; proposed_deliverables: str; status: str; admin_notes: str; reviewed_at: Optional[datetime]; created_at: datetime
+    class Config: from_attributes = True
+
+class MetricCreate(BaseModel):
+    stage: Literal["before", "current", "final"]
+    metric_name: str = Field(min_length=1, max_length=160)
+    metric_value: Optional[float] = None
+    notes: str = Field(default="", max_length=2000)
+class MetricOut(BaseModel):
+    id: int; pilot_id: int; stage: str; metric_name: str; metric_value: Optional[float]; notes: str; created_at: datetime
+    class Config: from_attributes = True
+
+class CompletionDecision(BaseModel):
+    approve: bool
+
+class PaidEngagementCreate(BaseModel):
+    student_id: int
+    source: Literal["direct_hire", "marketplace", "previous_pilot"] = "marketplace"
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=5000)
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    agreed_rate: float = Field(gt=0)
+    rate_type: Literal["monthly", "fixed_project"]
+    pilot_id: Optional[int] = None
+class PaidEngagementOut(BaseModel):
+    id: int; artisan_id: int; student_id: int; pilot_id: Optional[int]; source: str; title: str; description: str; start_date: Optional[datetime]; end_date: Optional[datetime]; agreed_rate: float; rate_type: str; status: str; created_at: datetime
+    class Config: from_attributes = True
+class AgreementCreate(BaseModel):
+    deliverables: str = Field(min_length=1, max_length=8000)
+    growth_targets: str = Field(default="", max_length=8000)
+class AgreementOut(BaseModel):
+    id: int; paid_engagement_id: int; deliverables: str; growth_targets: str; artisan_accepted_at: Optional[datetime]; student_accepted_at: Optional[datetime]
+    class Config: from_attributes = True
+class PaymentCreate(BaseModel):
+    amount: float = Field(gt=0)
+    method: Literal["UPI", "bank_transfer", "cash", "other"]
+    reference_note: str = Field(default="", max_length=1000)
+class PaymentOut(BaseModel):
+    id: int; paid_engagement_id: int; amount: float; method: str; reference_note: str; status: str; declared_at: datetime; student_confirmed_at: Optional[datetime]; verified_at: Optional[datetime]
+    class Config: from_attributes = True
+class ReviewCreate(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(default="", max_length=3000)
+class ReviewOut(BaseModel):
+    id: int; reviewer_id: int; reviewee_id: int; rating: int; comment: str; created_at: datetime
+    class Config: from_attributes = True
+class IssueCreate(BaseModel):
+    pilot_id: Optional[int] = None
+    paid_engagement_id: Optional[int] = None
+    category: Literal["communication", "work_quality", "payment", "conduct", "other"]
+    description: str = Field(min_length=1, max_length=5000)
+class IssueUpdate(BaseModel):
+    status: Literal["open", "reviewing", "resolved", "closed"]
+    admin_notes: str = Field(default="", max_length=5000)
+class IssueOut(BaseModel):
+    id: int; pilot_id: Optional[int]; paid_engagement_id: Optional[int]; reporter_id: int; category: str; description: str; status: str; admin_notes: str; created_at: datetime
+    class Config: from_attributes = True

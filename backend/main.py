@@ -48,6 +48,7 @@ from routers.impact_router import router as impact_router
 from routers.assisted_registration_router import router as assisted_registration_router
 from routers.admin_router import router as admin_router
 from routers.growth_router import router as growth_router
+from routers.operations_router import router as operations_router
 
 app.include_router(auth_router)
 app.include_router(product_router)
@@ -58,6 +59,7 @@ app.include_router(impact_router)
 app.include_router(assisted_registration_router)
 app.include_router(admin_router)
 app.include_router(growth_router)
+app.include_router(operations_router)
 
 
 @app.get("/health")

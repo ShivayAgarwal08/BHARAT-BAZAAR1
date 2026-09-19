@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { MdDashboard, MdGroup, MdLogout, MdPeople, MdPhone, MdTrendingUp, MdStorefront } from 'react-icons/md'
+import { MdDashboard, MdGroup, MdLogout, MdPeople, MdPhone, MdTrendingUp, MdStorefront, MdPayment, MdReport } from 'react-icons/md'
 
 export default function AdminSidebar() {
   const navigate = useNavigate()
@@ -13,6 +13,9 @@ export default function AdminSidebar() {
     { to: '/admin/assisted-registrations', label: 'Assisted Registrations', icon: <MdPhone /> },
     { to: '/admin/growth-requests', label: 'Growth Requests', icon: <MdTrendingUp /> },
     { to: '/admin/sponsored-pilots', label: 'Sponsored Pilots', icon: <MdStorefront /> },
+    { to: '/admin/paid-engagements', label: 'Paid Engagements', icon: <MdStorefront /> },
+    { to: '/admin/payments', label: 'Payments', icon: <MdPayment /> },
+    { to: '/admin/issues', label: 'Issues', icon: <MdReport /> },
     { to: '/admin/artisans', label: 'Artisans', icon: <MdPeople /> },
     { to: '/admin/students', label: 'Students', icon: <MdGroup /> },
   ]

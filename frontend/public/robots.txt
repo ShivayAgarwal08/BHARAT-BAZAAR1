@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /create
+Disallow: /marketplace
+Disallow: /alerts
+Disallow: /admin
+Disallow: /profile
+Disallow: /portfolio
+
+Sitemap: https://bharat-bazaar-1.vercel.app/sitemap.xml

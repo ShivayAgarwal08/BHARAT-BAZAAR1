@@ -1,7 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import {
-  MdDashboard, MdAdd, MdStorefront, MdLogout, MdMessage, MdTrendingUp
-} from 'react-icons/md'
+import { MdDashboard, MdAdd, MdStorefront, MdLogout, MdMessage, MdTrendingUp, MdPerson, MdHelp, MdWork } from 'react-icons/md'
 
 export default function Sidebar() {
   const navigate = useNavigate()
@@ -20,7 +18,10 @@ export default function Sidebar() {
     { to: '/my-manager', icon: <MdStorefront />, label: 'My Manager', roles: ['artisan'] },
     { to: '/my-artisan', icon: <MdStorefront />, label: 'My Artisan', roles: ['intern'] },
     { to: '/marketplace', icon: <MdStorefront />, label: user.role === 'intern' ? 'Opportunities' : 'Find a Manager' },
-    { to: '/alerts', icon: <MdMessage />, label: 'Messages', roles: ['artisan', 'intern'] },
+    { to: '/portfolio', icon: <MdWork />, label: 'Portfolio', roles: ['intern'] },
+    { to: '/alerts', icon: <MdMessage />, label: 'Messages & Updates', roles: ['artisan', 'intern'] },
+    { to: '/profile', icon: <MdPerson />, label: 'Profile', roles: ['artisan', 'intern'] },
+    { to: '/help', icon: <MdHelp />, label: 'Help', roles: ['artisan', 'intern'] },
   ]
 
   const items = allItems.filter(item => !item.roles || item.roles.includes(user.role))
