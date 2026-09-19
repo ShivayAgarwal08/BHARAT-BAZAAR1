@@ -97,6 +97,35 @@ class AdminFoundationTests(unittest.TestCase):
         self.assertEqual(updated.status_code, 200)
         self.assertEqual(updated.json()["status"], "contacted")
 
+        account_payload = {
+            "name": "Queue Test", "email": "assisted-artisan@example.com", "password": "TemporaryPass123!",
+            "phone_number": "+919876543210", "location": "Test village", "language": "en",
+        }
+        create_path = f"/admin/assisted-registrations/{assisted.json()['id']}/create-artisan"
+        self.assertEqual(self.client.post(create_path, json=account_payload).status_code, 401)
+        self.assertEqual(self.client.post(create_path, headers=artisan_headers, json=account_payload).status_code, 403)
+        self.assertEqual(self.client.post(create_path, headers=intern_headers, json=account_payload).status_code, 403)
+        invalid_phone = self.client.post(create_path, headers=admin_headers, json={**account_payload, "phone_number": "bad"})
+        self.assertEqual(invalid_phone.status_code, 422)
+        self.assertEqual(self.client.get("/assisted-registration/requests", headers=admin_headers).json()[0]["status"], "contacted")
+        created_artisan = self.client.post(create_path, headers=admin_headers, json=account_payload)
+        self.assertEqual(created_artisan.status_code, 201, created_artisan.text)
+        self.assertEqual(created_artisan.json()["role"], "artisan")
+        self.assertNotIn("password", created_artisan.json())
+        self.assertEqual(self.client.post(create_path, headers=admin_headers, json=account_payload).status_code, 409)
+        duplicate_request = self.client.post("/assisted-registration/request", json={
+            "full_name": "Duplicate Test", "phone_number": "+919876543211", "preferred_language": "en", "preferred_callback_time": "Weekdays",
+        }).json()
+        duplicate = self.client.post(f"/admin/assisted-registrations/{duplicate_request['id']}/create-artisan", headers=admin_headers, json=account_payload)
+        self.assertEqual(duplicate.status_code, 400)
+        self.assertEqual(self.client.get("/assisted-registration/requests", headers=admin_headers).json()[0]["status"], "pending")
+        artisan_login = self.client.post("/auth/login", json={"email": account_payload["email"], "password": account_payload["password"]})
+        self.assertEqual(artisan_login.status_code, 200)
+        created_headers = {"Authorization": f"Bearer {artisan_login.json()['access_token']}"}
+        self.assertEqual(self.client.get("/auth/me", headers=created_headers).json()["role"], "artisan")
+        self.assertEqual(self.client.get("/admin/summary", headers=created_headers).status_code, 403)
+        self.assertEqual(self.client.post("/admin/assisted-registrations/999999/create-artisan", headers=admin_headers, json={**account_payload, "email": "new@example.com"}).status_code, 404)
+
         artisans = self.client.get("/admin/artisans", headers=admin_headers)
         interns = self.client.get("/admin/interns", headers=admin_headers)
         summary = self.client.get("/admin/summary", headers=admin_headers)
@@ -105,9 +134,9 @@ class AdminFoundationTests(unittest.TestCase):
         self.assertEqual(summary.status_code, 200)
         self.assertEqual(artisans.json()[0]["role"], "artisan")
         self.assertEqual(interns.json()[0]["role"], "intern")
-        self.assertEqual(summary.json()["total_artisans"], 1)
+        self.assertEqual(summary.json()["total_artisans"], 2)
         self.assertEqual(summary.json()["total_interns"], 1)
-        self.assertEqual(summary.json()["pending_assisted_registrations"], 0)
+        self.assertEqual(summary.json()["pending_assisted_registrations"], 1)
 
 
 if __name__ == "__main__":

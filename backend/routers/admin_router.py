@@ -1,14 +1,51 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from auth import require_admin
+from auth import hash_password
 from database import get_db
 import models
 import schemas
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.post("/assisted-registrations/{request_id}/create-artisan", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
+def create_assisted_artisan(
+    request_id: int,
+    data: schemas.AdminCreateAssistedArtisan,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    request = db.query(models.AssistedRegistrationRequest).filter(
+        models.AssistedRegistrationRequest.id == request_id
+    ).first()
+    if request is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assisted registration request not found")
+    if request.status == "completed":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This request has already been completed")
+    email = str(data.email).strip().lower()
+    if db.query(models.User).filter(models.User.email == email).first():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
+    user = models.User(
+        name=data.name,
+        email=email,
+        hashed_password=hash_password(data.password),
+        role="artisan",
+        language=data.language,
+        location=data.location.strip(),
+        phone_number=data.phone_number,
+    )
+    db.add(user)
+    request.status = "completed"
+    if not request.notes:
+        request.notes = "Artisan account created by admin."
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.get("/summary", response_model=schemas.AdminSummaryOut)

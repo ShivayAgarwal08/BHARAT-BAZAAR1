@@ -138,6 +138,28 @@ class AssistedRegistrationRequestCreated(BaseModel):
     created_at: datetime
 
 
+class AdminCreateAssistedArtisan(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    phone_number: str = Field(min_length=8, max_length=20)
+    location: str = Field(default="", max_length=200)
+    language: str = Field(min_length=1, max_length=50)
+
+    @field_validator("name", "language")
+    @classmethod
+    def require_non_empty_account_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("This field cannot be empty")
+        return value
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_account_phone_number(cls, value: str) -> str:
+        return AssistedRegistrationRequestCreate.validate_phone_number(value)
+
+
 # Product
 class ProductCreate(BaseModel):
     raw_description: str
