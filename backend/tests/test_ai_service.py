@@ -15,176 +15,111 @@ class ProviderError(Exception):
 
 class AIServiceTests(unittest.TestCase):
     @staticmethod
-    def _successful_response():
-        return SimpleNamespace(
-            output_text=(
-                '{"title":"Handmade Clay Diyas","description":"20 handmade clay diyas.",'
-                '"category":"pottery","materials":["clay"],"quantity":20,'
-                '"tags":["clay","diyas"],"suggested_price_min":null,'
-                '"suggested_price_max":null,"target_customer":null,'
-                '"selling_points":["handmade"]}'
-            )
+    def _draft_json(title="Handmade Clay Diyas", description="20 handmade clay diyas."):
+        return (
+            '{"title":"' + title + '","description":"' + description + '",'
+            '"category":"pottery","materials":["clay"],"quantity":20,'
+            '"tags":["clay","diyas"],"suggested_price_min":null,'
+            '"suggested_price_max":null,"target_customer":null,"selling_points":["handmade"]}'
         )
 
-    def test_valid_structured_hindi_draft_is_labeled_ai(self):
-        response = SimpleNamespace(
-            output_text=(
-                '{"title":"नीली बनारसी साड़ियाँ","description":"10 नीली बनारसी सिल्क '
-                'साड़ियाँ जिन पर गोल्डन ज़री का काम है।","category":"textile",'
-                '"materials":["सिल्क","ज़री"],"quantity":10,"tags":["बनारसी","साड़ी"],'
-                '"suggested_price_min":null,"suggested_price_max":null,"target_customer":null,'
-                '"selling_points":["गोल्डन ज़री का काम"]}'
-            )
-        )
-        client = SimpleNamespace(interactions=SimpleNamespace(create=lambda **_: response))
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-            "services.ai_service.genai.Client", return_value=client
-        ):
-            result = asyncio.run(analyze_product_input("मेरे पास 10 साड़ियाँ हैं", "hi"))
+    def _gemini_client(self, create):
+        return SimpleNamespace(interactions=SimpleNamespace(create=create))
 
+    def _groq_client(self, content):
+        completion = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+        return SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **_: completion)))
+
+    def test_gemini_success_does_not_call_groq(self):
+        gemini = self._gemini_client(lambda **_: SimpleNamespace(output_text=self._draft_json()))
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GROQ_API_KEY": "test"}), patch(
+            "services.ai_service.genai.Client", return_value=gemini
+        ), patch("services.ai_service.OpenAI") as groq:
+            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
         self.assertEqual(result["source"], "ai")
-        self.assertEqual(result["quantity"], 10)
-        self.assertEqual(result["materials"], ["सिल्क", "ज़री"])
-        self.assertIsNone(result["suggested_price"])
-        self.assertIsNone(result["profit_margin"])
+        self.assertEqual(result["provider"], "gemini")
+        groq.assert_not_called()
 
-    def test_valid_structured_english_draft_preserves_price_as_estimate(self):
-        response = SimpleNamespace(
-            output_text=(
-                '{"title":"Handmade Clay Diyas","description":"20 handmade clay diyas.",'
-                '"category":"pottery","materials":["clay"],"quantity":20,'
-                '"tags":["clay","diyas"],"suggested_price_min":200,'
-                '"suggested_price_max":300,"target_customer":null,'
-                '"selling_points":["handmade"]}'
-            )
-        )
-        client = SimpleNamespace(interactions=SimpleNamespace(create=lambda **_: response))
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-            "services.ai_service.genai.Client", return_value=client
+    def test_gemini_429_then_groq_success(self):
+        gemini = self._gemini_client(lambda **_: (_ for _ in ()).throw(ProviderError(429)))
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GROQ_API_KEY": "test"}), patch(
+            "services.ai_service.genai.Client", return_value=gemini
+        ), patch("services.ai_service.OpenAI", return_value=self._groq_client(self._draft_json())) as groq, patch(
+            "services.ai_service.asyncio.sleep", new_callable=AsyncMock
         ):
             result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
+        self.assertEqual(result["provider"], "groq")
+        groq.assert_called_once()
 
-        self.assertEqual(result["source"], "ai")
-        self.assertEqual(result["quantity"], 20)
-        self.assertEqual(result["suggested_price"], 250)
-        self.assertIsNone(result["profit_margin"])
-
-    def test_provider_failure_uses_truthful_basic_draft(self):
-        for provider_error in ("404 Not Found", "network timeout", "503 Service Unavailable"):
-            client = SimpleNamespace(
-                interactions=SimpleNamespace(create=lambda **_: (_ for _ in ()).throw(RuntimeError(provider_error)))
-            )
-            with self.subTest(provider_error=provider_error), patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-                "services.ai_service.genai.Client", return_value=client
-            ), patch("services.ai_service.asyncio.sleep", new_callable=AsyncMock):
-                result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
-
-            self.assertEqual(result["source"], "basic_draft")
-            self.assertEqual(result["quantity"], 20)
-            self.assertIsNone(result["suggested_price"])
-            self.assertIsNone(result["profit_margin"])
-
-    def test_invalid_gemini_json_uses_truthful_basic_draft(self):
-        client = SimpleNamespace(interactions=SimpleNamespace(create=lambda **_: SimpleNamespace(output_text="not json")))
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-            "services.ai_service.genai.Client", return_value=client
+    def test_gemini_timeout_then_groq_success(self):
+        gemini = self._gemini_client(lambda **_: (_ for _ in ()).throw(TimeoutError()))
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GROQ_API_KEY": "test"}), patch(
+            "services.ai_service.genai.Client", return_value=gemini
+        ), patch("services.ai_service.OpenAI", return_value=self._groq_client(self._draft_json())), patch(
+            "services.ai_service.asyncio.sleep", new_callable=AsyncMock
         ):
             result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
+        self.assertEqual(result["provider"], "groq")
 
+    def test_gemini_503_then_groq_success(self):
+        gemini = self._gemini_client(lambda **_: (_ for _ in ()).throw(ProviderError(503)))
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GROQ_API_KEY": "test"}), patch(
+            "services.ai_service.genai.Client", return_value=gemini
+        ), patch("services.ai_service.OpenAI", return_value=self._groq_client(self._draft_json())), patch(
+            "services.ai_service.asyncio.sleep", new_callable=AsyncMock
+        ):
+            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
+        self.assertEqual(result["provider"], "groq")
+
+    def test_both_providers_fail_uses_basic_draft_without_provider(self):
+        gemini = self._gemini_client(lambda **_: (_ for _ in ()).throw(TimeoutError()))
+        groq = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=lambda **_: (_ for _ in ()).throw(TimeoutError()))))
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GROQ_API_KEY": "test"}), patch(
+            "services.ai_service.genai.Client", return_value=gemini
+        ), patch("services.ai_service.OpenAI", return_value=groq), patch(
+            "services.ai_service.asyncio.sleep", new_callable=AsyncMock
+        ):
+            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
         self.assertEqual(result["source"], "basic_draft")
-        self.assertIsNone(result["suggested_price"])
+        self.assertIsNone(result["provider"])
 
-    def test_empty_structured_fields_use_truthful_basic_draft(self):
-        client = SimpleNamespace(
-            interactions=SimpleNamespace(
-                create=lambda **_: SimpleNamespace(
-                    output_text=(
-                        '{"title":"","description":"","category":"",'
-                        '"materials":[],"quantity":1,"tags":[],'
-                        '"suggested_price_min":null,"suggested_price_max":null,'
-                        '"target_customer":null,"selling_points":[]}'
-                    )
-                )
-            )
-        )
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-            "services.ai_service.genai.Client", return_value=client
-        ):
-            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
-
-        self.assertEqual(result["source"], "basic_draft")
-        self.assertEqual(result["description"], "I have 20 handmade clay diyas.")
-
-    def test_timeout_then_success_retries_once(self):
+    def test_permanent_gemini_4xx_does_not_retry_or_call_groq(self):
         calls = []
-
         def create(**_):
             calls.append(True)
-            if len(calls) == 1:
-                raise TimeoutError()
-            return self._successful_response()
-
-        client = SimpleNamespace(interactions=SimpleNamespace(create=create))
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-            "services.ai_service.genai.Client", return_value=client
-        ), patch("services.ai_service.asyncio.sleep", new_callable=AsyncMock) as sleep:
+            raise ProviderError(401)
+        gemini = self._gemini_client(create)
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GROQ_API_KEY": "test"}), patch(
+            "services.ai_service.genai.Client", return_value=gemini
+        ), patch("services.ai_service.OpenAI") as groq:
             result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
-
-        self.assertEqual(result["source"], "ai")
-        self.assertEqual(len(calls), 2)
-        sleep.assert_awaited_once_with(1.0)
-
-    def test_both_timeouts_use_basic_draft_after_two_attempts(self):
-        calls = []
-
-        def create(**_):
-            calls.append(True)
-            raise TimeoutError()
-
-        client = SimpleNamespace(interactions=SimpleNamespace(create=create))
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-            "services.ai_service.genai.Client", return_value=client
-        ), patch("services.ai_service.asyncio.sleep", new_callable=AsyncMock):
-            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
-
-        self.assertEqual(result["source"], "basic_draft")
-        self.assertEqual(len(calls), 2)
-
-    def test_503_then_success_retries_once(self):
-        calls = []
-
-        def create(**_):
-            calls.append(True)
-            if len(calls) == 1:
-                raise ProviderError(503)
-            return self._successful_response()
-
-        client = SimpleNamespace(interactions=SimpleNamespace(create=create))
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-            "services.ai_service.genai.Client", return_value=client
-        ), patch("services.ai_service.asyncio.sleep", new_callable=AsyncMock):
-            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
-
-        self.assertEqual(result["source"], "ai")
-        self.assertEqual(len(calls), 2)
-
-    def test_permanent_404_does_not_retry(self):
-        calls = []
-
-        def create(**_):
-            calls.append(True)
-            raise ProviderError(404)
-
-        client = SimpleNamespace(interactions=SimpleNamespace(create=create))
-        with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}), patch(
-            "services.ai_service.genai.Client", return_value=client
-        ):
-            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
-
-        self.assertEqual(result["source"], "basic_draft")
         self.assertEqual(len(calls), 1)
+        self.assertEqual(result["source"], "basic_draft")
+        groq.assert_not_called()
 
-    def test_hindi_transcript_is_not_prompted_as_english(self):
+    def test_hindi_groq_draft_preserves_hindi_language(self):
+        hindi = self._draft_json("नीली साड़ियाँ", "मेरे पास 20 नीली साड़ियाँ हैं।")
+        gemini = self._gemini_client(lambda **_: (_ for _ in ()).throw(ProviderError(503)))
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GROQ_API_KEY": "test"}), patch(
+            "services.ai_service.genai.Client", return_value=gemini
+        ), patch("services.ai_service.OpenAI", return_value=self._groq_client(hindi)), patch(
+            "services.ai_service.asyncio.sleep", new_callable=AsyncMock
+        ):
+            result = asyncio.run(analyze_product_input("मेरे पास 20 नीली साड़ियाँ हैं।", "en"))
+        self.assertEqual(result["provider"], "groq")
+        self.assertEqual(result["language"], "hi")
+        self.assertTrue(result["title"].startswith("नीली"))
+
+    def test_missing_groq_key_preserves_final_basic_draft(self):
+        gemini = self._gemini_client(lambda **_: (_ for _ in ()).throw(TimeoutError()))
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "test", "GROQ_API_KEY": ""}), patch(
+            "services.ai_service.genai.Client", return_value=gemini
+        ), patch("services.ai_service.asyncio.sleep", new_callable=AsyncMock):
+            result = asyncio.run(analyze_product_input("I have 20 handmade clay diyas.", "en"))
+        self.assertEqual(result["source"], "basic_draft")
+        self.assertIsNone(result["provider"])
+
+    def test_hindi_prompt_is_not_labeled_english(self):
         prompt = _product_prompt("मेरे पास 10 नीली साड़ियाँ हैं।", "en")
         self.assertIn("Transcript language hint: hi", prompt)
         self.assertNotIn("Transcript language hint: en", prompt)

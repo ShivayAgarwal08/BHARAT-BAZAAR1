@@ -197,6 +197,7 @@ class AIAnalyzeResponse(BaseModel):
     tags: List[str]
     language: str
     source: Literal["ai", "basic_draft"]
+    provider: Optional[Literal["gemini", "groq"]] = None
     materials: List[str] = Field(default_factory=list)
     suggested_price_min: Optional[float] = None
     suggested_price_max: Optional[float] = None

@@ -20,6 +20,7 @@ async def generate_listing(data: schemas.AIAnalyzeRequest):
     result = await generate_product_listing(analysis)
     return {
         "source": result["source"],
+        "provider": result.get("provider"),
         "title": result["title"],
         "description": result["description"],
         "category": result.get("category"),
