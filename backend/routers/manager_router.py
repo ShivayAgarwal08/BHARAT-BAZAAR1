@@ -33,7 +33,12 @@ def create_request(
 
 
 @router.get("/requests", response_model=list[schemas.ManagerRequestOut])
-def list_requests(db: Session = Depends(get_db)):
+def list_requests(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if current_user.role != "intern":
+        raise HTTPException(status_code=403, detail="Only interns can browse manager requests")
     return db.query(models.ManagerRequest).filter(
         models.ManagerRequest.status == "open"
     ).order_by(models.ManagerRequest.created_at.desc()).all()

@@ -17,7 +17,11 @@ if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
+    connect_args={"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {},
+    # Render workers can retain a Neon connection after the database or network
+    # closes it. Validate pooled connections before checkout and recycle them.
+    pool_pre_ping=True,
+    pool_recycle=300,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

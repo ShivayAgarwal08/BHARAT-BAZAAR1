@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { signup } from '../api/auth'
 import { requestAssistedRegistration } from '../api/assistedRegistration'
 import { MdPerson, MdEmail, MdLock, MdLanguage, MdArrowForward, MdPlace } from 'react-icons/md'
+import { getApiErrorMessage } from '../utils/apiError'
 
 const LANGUAGES = [
   { code: 'en', label: '🇬🇧 English' },
@@ -46,7 +47,7 @@ export default function Signup() {
       localStorage.setItem('vl_user', JSON.stringify(data.user))
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Signup failed. Please try again.')
+      setError(getApiErrorMessage(err, 'Signup could not be completed. Please try again shortly.'))
     } finally {
       setLoading(false)
     }
@@ -60,8 +61,7 @@ export default function Signup() {
       await requestAssistedRegistration(assistedForm)
       setAssistedSuccess(true)
     } catch (err) {
-      const detail = err.response?.data?.detail
-      setAssistedError(typeof detail === 'string' ? detail : 'Could not submit your request. Please try again.')
+      setAssistedError(getApiErrorMessage(err, 'Could not submit your request. Please try again.'))
     } finally {
       setAssistedLoading(false)
     }

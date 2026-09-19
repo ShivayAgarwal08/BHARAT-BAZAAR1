@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { login } from '../api/auth'
 import { MdEmail, MdLock, MdArrowForward } from 'react-icons/md'
+import { getApiErrorMessage } from '../utils/apiError'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -19,7 +20,7 @@ export default function Login() {
       localStorage.setItem('vl_user', JSON.stringify(data.user))
       navigate(data.user.role === 'admin' ? '/admin' : '/dashboard')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
+      setError(getApiErrorMessage(err, 'Login could not be completed. Please try again shortly.'))
     } finally {
       setLoading(false)
     }
