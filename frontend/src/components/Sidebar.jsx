@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  MdDashboard, MdAdd, MdStorefront, MdLogout, MdMessage
+  MdDashboard, MdAdd, MdStorefront, MdLogout, MdMessage, MdTrendingUp
 } from 'react-icons/md'
 
 export default function Sidebar() {
@@ -16,6 +16,9 @@ export default function Sidebar() {
   const allItems = [
     { to: '/dashboard', icon: <MdDashboard />, label: 'Home' },
     { to: '/create', icon: <MdAdd />, label: 'Add Product', roles: ['artisan'] },
+    { to: '/business-help', icon: <MdTrendingUp />, label: 'Get Business Help', roles: ['artisan'] },
+    { to: '/my-manager', icon: <MdStorefront />, label: 'My Manager', roles: ['artisan'] },
+    { to: '/my-artisan', icon: <MdStorefront />, label: 'My Artisan', roles: ['intern'] },
     { to: '/marketplace', icon: <MdStorefront />, label: user.role === 'intern' ? 'Opportunities' : 'Find a Manager' },
     { to: '/alerts', icon: <MdMessage />, label: 'Messages', roles: ['artisan', 'intern'] },
   ]

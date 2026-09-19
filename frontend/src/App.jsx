@@ -15,6 +15,10 @@ const Alerts = lazy(() => import('./pages/Alerts'))
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const AdminAssistedRegistrations = lazy(() => import('./pages/AdminAssistedRegistrations'))
 const AdminUsers = lazy(() => import('./pages/AdminUsers'))
+const BusinessHelp = lazy(() => import('./pages/BusinessHelp'))
+const MyPilot = lazy(() => import('./pages/MyPilot'))
+const GrowthRequests = lazy(() => import('./pages/AdminGrowth').then((module) => ({ default: module.GrowthRequests })))
+const SponsoredPilots = lazy(() => import('./pages/AdminGrowth').then((module) => ({ default: module.SponsoredPilots })))
 
 function getStoredUser() {
   try { return JSON.parse(localStorage.getItem('vl_user') || '{}') } catch { return {} }
@@ -62,6 +66,11 @@ export default function App() {
           <Route path="/create" element={
             <UserRoute><AppLayout><VoiceCreator /></AppLayout></UserRoute>
           } />
+          <Route path="/business-help" element={<UserRoute><AppLayout><BusinessHelp /></AppLayout></UserRoute>} />
+          <Route path="/my-manager" element={<UserRoute><AppLayout><MyPilot /></AppLayout></UserRoute>} />
+          <Route path="/my-artisan" element={<UserRoute><AppLayout><MyPilot /></AppLayout></UserRoute>} />
+          <Route path="/admin/growth-requests" element={<AdminRoute><AdminLayout><GrowthRequests /></AdminLayout></AdminRoute>} />
+          <Route path="/admin/sponsored-pilots" element={<AdminRoute><AdminLayout><SponsoredPilots /></AdminLayout></AdminRoute>} />
           <Route path="/listing/:id" element={
             <UserRoute><AppLayout><ListingPage /></AppLayout></UserRoute>
           } />

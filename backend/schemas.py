@@ -137,6 +137,25 @@ class AssistedRegistrationRequestCreated(BaseModel):
     status: Literal["pending", "contacted", "completed", "cancelled"]
     created_at: datetime
 
+class GrowthRequestCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    description: str = Field(min_length=1, max_length=2000)
+    help_type: Literal["social_media", "product_listing", "english_support", "photography", "marketplace_setup", "digital_marketing", "cataloging", "general_business_help"]
+    preferred_duration_months: int = Field(default=1, ge=1, le=2)
+
+class GrowthRequestOut(BaseModel):
+    id: int; artisan_id: int; title: str; description: str; help_type: str; preferred_duration_months: int; status: str; assigned_student_id: Optional[int]; created_at: datetime
+    class Config: from_attributes = True
+
+class PilotEngagementOut(BaseModel):
+    id: int; growth_request_id: int; artisan_id: int; student_id: int; funding_type: str; artisan_cost: float; stipend_amount: Optional[float]; start_date: datetime; end_date: datetime; status: str
+    class Config: from_attributes = True
+
+class PilotViewOut(PilotEngagementOut):
+    artisan_name: Optional[str] = None; artisan_location: Optional[str] = None; artisan_bio: Optional[str] = None
+    student_name: Optional[str] = None; student_bio: Optional[str] = None; student_services: Optional[str] = None
+    request_title: Optional[str] = None; request_help_type: Optional[str] = None; request_description: Optional[str] = None
+
 
 class AdminCreateAssistedArtisan(BaseModel):
     name: str = Field(min_length=1, max_length=120)

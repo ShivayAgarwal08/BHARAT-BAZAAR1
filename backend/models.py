@@ -130,3 +130,38 @@ class AssistedRegistrationRequest(Base):
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class GrowthRequest(Base):
+    __tablename__ = "growth_requests"
+    id = Column(Integer, primary_key=True)
+    artisan_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    help_type = Column(String, nullable=False)
+    preferred_duration_months = Column(Integer, nullable=False, default=1)
+    status = Column(String, nullable=False, default="pending")
+    assigned_student_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    artisan = relationship("User", foreign_keys=[artisan_id])
+    assigned_student = relationship("User", foreign_keys=[assigned_student_id])
+
+
+class PilotEngagement(Base):
+    __tablename__ = "pilot_engagements"
+    id = Column(Integer, primary_key=True)
+    growth_request_id = Column(Integer, ForeignKey("growth_requests.id"), nullable=False, unique=True)
+    artisan_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    funding_type = Column(String, nullable=False, default="PLATFORM_SPONSORED")
+    artisan_cost = Column(Float, nullable=False, default=0)
+    stipend_amount = Column(Float, nullable=True)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
+    status = Column(String, nullable=False, default="active")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    request = relationship("GrowthRequest")
+    artisan = relationship("User", foreign_keys=[artisan_id])
+    student = relationship("User", foreign_keys=[student_id])
