@@ -77,6 +77,7 @@ export default function VoiceCreator() {
   const recognitionRef = useRef(null)
   const descriptionRef = useRef('')
   const finalTranscriptRef = useRef('')
+  const speechLanguageRef = useRef('')
 
   const commitDescription = (nextDescription) => {
     descriptionRef.current = nextDescription
@@ -99,7 +100,8 @@ export default function VoiceCreator() {
     recognitionRef.current = new SpeechRecognition()
     recognitionRef.current.continuous = true
     recognitionRef.current.interimResults = true
-    recognitionRef.current.lang = 'hi-IN' // Default to Hindi, can be dynamic
+    recognitionRef.current.lang = 'hi-IN'
+    speechLanguageRef.current = recognitionRef.current.lang
 
     recognitionRef.current.onresult = (event) => {
       let committedTranscript = finalTranscriptRef.current
@@ -154,13 +156,14 @@ export default function VoiceCreator() {
     }
     setInputError('')
     setAnalyzing(true)
+    const requestLanguage = speechLanguageRef.current || user.language || 'en'
     try {
       // The backend returns either an AI draft or an honest local basic draft.
       const response = await analyzeProduct({
         description: transcript,
-        language: user.language || 'hi'
+        language: requestLanguage
       });
-      const draft = normalizeDraft(response.data, transcript, user.language || 'hi')
+      const draft = normalizeDraft(response.data, transcript, requestLanguage)
       commitDescription(transcript)
       setResult(draft)
       setStep(2);
@@ -180,7 +183,7 @@ export default function VoiceCreator() {
       await createProduct({
         raw_description: description,
         quantity: result.quantity,
-        language: user.language || 'hi',
+        language: result.language || user.language || 'en',
         ai_data: result 
       })
       navigate('/dashboard')
@@ -239,6 +242,7 @@ export default function VoiceCreator() {
               value={description}
               onChange={(e) => {
                 const nextDescription = e.target.value
+                speechLanguageRef.current = ''
                 finalTranscriptRef.current = nextDescription
                 setFinalTranscript(nextDescription)
                 setInterimTranscript('')

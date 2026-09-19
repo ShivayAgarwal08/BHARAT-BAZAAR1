@@ -123,6 +123,11 @@ class ProductFlowTests(unittest.TestCase):
         self.assertEqual(payload["quantity"], 10)
         self.assertEqual(payload["tags"], ai_result["tags"])
 
+    def test_voice_creator_uses_truthful_source_labels(self):
+        voice_creator = Path(__file__).parents[2] / "frontend" / "src" / "pages" / "VoiceCreator.jsx"
+        source = voice_creator.read_text(encoding="utf-8")
+        self.assertIn("result.source === 'ai' ? 'AI-generated draft' : 'Basic draft from your description'", source)
+
 
 if __name__ == "__main__":
     unittest.main()

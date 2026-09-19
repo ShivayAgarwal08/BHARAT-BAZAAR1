@@ -2,8 +2,10 @@ import asyncio
 import logging
 import os
 import re
+import time
 from typing import Any, Dict, List, Optional
 
+import httpx
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -14,7 +16,9 @@ logger = logging.getLogger(__name__)
 # Gemini 3.6 Flash is a current, broadly available Flash model. Deployments can
 # select another supported model without a code change through GEMINI_MODEL.
 DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
-GEMINI_TIMEOUT_SECONDS = 30
+GEMINI_ATTEMPT_TIMEOUT_SECONDS = 60
+GEMINI_TOTAL_TIMEOUT_SECONDS = 65
+GEMINI_MAX_ATTEMPTS = 2
 ENGLISH_STOP_WORDS = {
     "a", "an", "and", "are", "for", "have", "i", "in", "is", "it", "of", "the", "to", "with",
 }
@@ -60,6 +64,13 @@ class GeminiProductDraft(BaseModel):
 
 def _clean_transcript(description: str) -> str:
     return " ".join(description.split())
+
+
+def _listing_language(transcript: str, requested_language: str) -> str:
+    """Avoid telling Gemini that Devanagari speech is English."""
+    if re.search(r"[\u0900-\u097F]", transcript):
+        return "hi"
+    return (requested_language or "unspecified").strip() or "unspecified"
 
 
 def _draft_title(transcript: str) -> str:
@@ -132,6 +143,31 @@ def get_gemini_failure_category(error: Exception) -> str:
     return "other"
 
 
+def _provider_status(error: Exception) -> Optional[int]:
+    status = getattr(error, "status_code", None)
+    if status is None:
+        status = getattr(error, "code", None)
+    return status if isinstance(status, int) else None
+
+
+def _is_transient_gemini_error(error: Exception) -> bool:
+    if isinstance(error, (TimeoutError, httpx.TimeoutException, httpx.NetworkError)):
+        return True
+    return _provider_status(error) in {429, 503}
+
+
+def _retry_after_seconds(error: Exception) -> Optional[float]:
+    response = getattr(error, "response", None)
+    headers = getattr(response, "headers", None)
+    if not headers:
+        return None
+    retry_after = headers.get("retry-after") or headers.get("Retry-After")
+    try:
+        return max(0.0, float(retry_after)) if retry_after is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _to_response(draft: GeminiProductDraft, language: str) -> Dict[str, Any]:
     if not draft.title.strip() or not draft.description.strip():
         raise ValueError("Gemini structured result has unusable title or description")
@@ -168,7 +204,7 @@ def _product_prompt(description: str, language: str) -> str:
     return f"""
 You create editable product-listing drafts for Bharat Bazaar artisans.
 
-Transcript language hint: {language}
+Transcript language hint: {_listing_language(description, language)}
 Artisan transcript (the source of truth):
 ---
 {description}
@@ -194,54 +230,87 @@ Never imply that an estimate is live market data.
 
 async def analyze_product_input(description: str, language: str = "hi") -> Dict[str, Any]:
     """Use Gemini structured output or return an explicitly labeled local draft."""
+    transcript = _clean_transcript(description)
+    listing_language = _listing_language(transcript, language)
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         logger.info("Gemini product generation skipped; fallback_used=true reason=missing_api_key")
-        return await create_basic_draft(description, language)
+        return await create_basic_draft(transcript, listing_language)
 
     model_name = os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip() or DEFAULT_GEMINI_MODEL
-    try:
-        logger.info(
-            "Gemini product generation requested model=%s transcript_length=%d",
-            model_name,
-            len(_clean_transcript(description)),
-        )
-        client = genai.Client(
-            api_key=api_key,
-            http_options=types.HttpOptions(timeout=30000),
-        )
-        response = await asyncio.wait_for(
-            asyncio.to_thread(
-                client.interactions.create,
-                model=model_name,
-                input=_product_prompt(_clean_transcript(description), language),
-                response_format={
-                    "type": "text",
-                    "mime_type": "application/json",
-                    "schema": GeminiProductDraft.model_json_schema(),
-                },
-            ),
-            timeout=GEMINI_TIMEOUT_SECONDS,
-        )
-        if not response.output_text:
-            raise ValueError("Gemini returned no structured text")
-        result = _to_response(GeminiProductDraft.model_validate_json(response.output_text), language)
-        logger.info(
-            "Gemini product generation succeeded model=%s title_length=%d description_length=%d fallback_used=false",
-            model_name,
-            len(result["title"]),
-            len(result["description"]),
-        )
-        return result
-    except Exception as error:
-        logger.warning(
-            "Gemini product generation failed model=%s error_class=%s status=%s category=%s fallback_used=true",
-            model_name,
-            type(error).__name__,
-            getattr(error, "status_code", None),
-            get_gemini_failure_category(error),
-        )
-        return await create_basic_draft(description, language)
+    deadline = time.monotonic() + GEMINI_TOTAL_TIMEOUT_SECONDS
+    client = None
+
+    for attempt in range(1, GEMINI_MAX_ATTEMPTS + 1):
+        remaining_seconds = deadline - time.monotonic()
+        if remaining_seconds <= 0:
+            break
+        try:
+            logger.info(
+                "Gemini product generation requested model=%s attempt=%d/%d transcript_length=%d",
+                model_name,
+                attempt,
+                GEMINI_MAX_ATTEMPTS,
+                len(transcript),
+            )
+            if client is None:
+                client = genai.Client(
+                    api_key=api_key,
+                    http_options=types.HttpOptions(
+                        timeout=GEMINI_ATTEMPT_TIMEOUT_SECONDS * 1000,
+                        # Own retry loop below keeps two attempts and the total deadline predictable.
+                        retry_options=types.HttpRetryOptions(attempts=1),
+                    ),
+                )
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    client.interactions.create,
+                    model=model_name,
+                    input=_product_prompt(transcript, listing_language),
+                    response_format={
+                        "type": "text",
+                        "mime_type": "application/json",
+                        "schema": GeminiProductDraft.model_json_schema(),
+                    },
+                ),
+                timeout=min(GEMINI_ATTEMPT_TIMEOUT_SECONDS, remaining_seconds),
+            )
+            if not response.output_text:
+                raise ValueError("Gemini returned no structured text")
+            result = _to_response(GeminiProductDraft.model_validate_json(response.output_text), listing_language)
+            logger.info(
+                "Gemini product generation succeeded model=%s attempt=%d title_length=%d description_length=%d fallback_used=false",
+                model_name,
+                attempt,
+                len(result["title"]),
+                len(result["description"]),
+            )
+            return result
+        except Exception as error:
+            transient = _is_transient_gemini_error(error)
+            retry_after = _retry_after_seconds(error)
+            logger.warning(
+                "Gemini product generation failed model=%s attempt=%d/%d error_class=%s status=%s category=%s transient=%s",
+                model_name,
+                attempt,
+                GEMINI_MAX_ATTEMPTS,
+                type(error).__name__,
+                _provider_status(error),
+                get_gemini_failure_category(error),
+                transient,
+            )
+            if not transient or attempt == GEMINI_MAX_ATTEMPTS:
+                break
+
+            backoff_seconds = retry_after if retry_after is not None else 1.0
+            if time.monotonic() + backoff_seconds >= deadline:
+                logger.warning("Gemini retry skipped because the total deadline would be exceeded.")
+                break
+            logger.info("Gemini product generation retrying after %.1f seconds.", backoff_seconds)
+            await asyncio.sleep(backoff_seconds)
+
+    logger.warning("Gemini product generation exhausted; fallback_used=true")
+    return await create_basic_draft(transcript, listing_language)
 
 
 async def generate_product_listing(analysis: Dict[str, Any]) -> Dict[str, Any]:
