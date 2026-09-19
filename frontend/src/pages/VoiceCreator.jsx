@@ -3,56 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { analyzeProduct } from '../api/ai'
 import { createProduct } from '../api/product'
 import { MdMic, MdStop, MdAutoAwesome, MdCloudUpload, MdPhotoCamera, MdVideocam } from 'react-icons/md'
-
-const categoryPlaceholder = (category = '') => {
-  const normalized = category.toLowerCase()
-  if (/(saree|sari|textile|handloom|fabric|weav|साड़ी|साड़ियाँ|वस्त्र|कपड़ा)/.test(normalized)) return { icon: '🧵', label: 'Textile product' }
-  if (/(pottery|diya|ceramic|clay|मिट्टी|दीया)/.test(normalized)) return { icon: '🏺', label: 'Pottery product' }
-  if (/(jewel|bead|ornament|आभूषण|गहना)/.test(normalized)) return { icon: '💍', label: 'Jewelry product' }
-  if (/(wood|carv|bamboo|craft|लकड़ी|बांस)/.test(normalized)) return { icon: '🪵', label: 'Craft product' }
-  return { icon: '🛍️', label: 'Product placeholder' }
-}
-
-const transcriptTitle = (transcript) => transcript.trim().split(/\s+/).slice(0, 12).join(' ').slice(0, 120)
-
-const createSafeBasicDraft = (transcript, language) => ({
-  source: 'basic_draft',
-  product_name: transcriptTitle(transcript),
-  title: transcriptTitle(transcript),
-  description: transcript,
-  category: null,
-  material: null,
-  materials: [],
-  quantity: 1,
-  tags: [],
-  suggested_price: null,
-  suggested_price_min: null,
-  suggested_price_max: null,
-  price: '',
-  language,
-})
-
-const normalizeDraft = (data, transcript, language) => {
-  const title = typeof data?.title === 'string' ? data.title.trim() : ''
-  const generatedDescription = typeof data?.description === 'string' ? data.description.trim() : ''
-  const usable = title.length > 0 && generatedDescription.length > 0
-
-  if (!usable) return createSafeBasicDraft(transcript, language)
-
-  return {
-    ...data,
-    source: data.source === 'ai' ? 'ai' : 'basic_draft',
-    title,
-    product_name: data.product_name || title,
-    description: generatedDescription,
-    category: typeof data.category === 'string' ? data.category : null,
-    materials: Array.isArray(data.materials) ? data.materials.filter(Boolean) : [],
-    quantity: Number.isInteger(Number(data.quantity)) && Number(data.quantity) > 0 ? Number(data.quantity) : 1,
-    tags: Array.isArray(data.tags) ? data.tags.filter(Boolean) : [],
-    price: data.suggested_price ?? '',
-    language,
-  }
-}
+import { categoryPlaceholder, normalizeProductDraft } from '../utils/productDraft'
 
 export default function VoiceCreator() {
   const navigate = useNavigate()
@@ -163,7 +114,7 @@ export default function VoiceCreator() {
         description: transcript,
         language: requestLanguage
       });
-      const draft = normalizeDraft(response.data, transcript, requestLanguage)
+      const draft = normalizeProductDraft(response.data, transcript, requestLanguage)
       commitDescription(transcript)
       setResult(draft)
       setStep(2);
@@ -335,7 +286,7 @@ export default function VoiceCreator() {
             </div>
             <div className="form-group">
               <label className="form-label">Quantity</label>
-              <input className="input" type="number" min="1" step="1" value={result.quantity || 1} onChange={(e) => setResult({ ...result, quantity: Math.max(1, Number(e.target.value) || 1) })} />
+              <input className="input" type="number" min="1" step="1" value={result.quantity ?? ''} onChange={(e) => setResult({ ...result, quantity: e.target.value === '' ? null : Math.max(1, Number(e.target.value) || 1) })} />
             </div>
             <div className="form-group">
               <label className="form-label">Price</label>
